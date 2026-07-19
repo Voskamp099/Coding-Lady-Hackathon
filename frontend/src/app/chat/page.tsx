@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { BottomNav } from '@/components/bottom-nav';
 import { ParticleAvatar } from '@/components/particle-avatar';
 import { getUser, getMemories, CHILDREN_FIVE_TIMES, syncMemoriesFromBackend } from '@/lib/store';
+import { Markdown } from '@/components/markdown';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -220,7 +221,7 @@ export default function ChatPage() {
               }`}
               style={msg.role === 'user' ? { background: BTN_GRADIENT } : {}}>
                 {msg.role === 'assistant' ? (
-                  <span className="whitespace-pre-wrap">{msg.content}</span>
+                  <Markdown>{msg.content}</Markdown>
                 ) : (
                   msg.content
                 )}

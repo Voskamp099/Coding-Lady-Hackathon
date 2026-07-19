@@ -22,7 +22,7 @@
 - **Language**: TypeScript 5
 - **UI 组件**: shadcn/ui (基于 Radix UI)
 - **Styling**: Tailwind CSS 4
-- **AI**: coze-coding-dev-sdk (doubao-seed-2-0-lite-260215 模型，SSE 流式)
+- **AI**: 阶跃星辰 StepFun `step-3.7-flash`（兼容 OpenAI 接口，SSE 流式）
 
 ## 目录结构
 

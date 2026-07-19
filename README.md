@@ -61,6 +61,9 @@ timemirror/
 ├── data/                   # 数据文件
 │   ├── sample-children.json  # 演示数据（儿童成长，TM_ 系列）
 │   └── sample-life.json      # 演示数据（人生记忆，LM_ 系列）
+├── scripts/                # 手动调试脚本
+│   ├── test_agent.py         # 测试记忆提取 Agent
+│   └── test_chat_agent.py    # 测试 RAG 对话 Agent
 ├── run.py                  # 后端启动脚本
 ├── prepare_data.py         # CSV 数据导入脚本
 ├── render.yaml             # Render 部署配置
