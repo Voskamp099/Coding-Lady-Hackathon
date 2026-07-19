@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: timemirror-backend
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false  # 在 Render 后台手动填入
+      - key: OPENAI_BASE_URL
+        value: https://api.stepfun.com/v1
+      - key: MODEL_NAME
+        value: step-3.7-flash
+      - key: DEBUG
+        value: "false"

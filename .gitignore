@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+*.egg-info/
+
+# Environment & secrets (keep .env.example tracked)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Database (local SQLite, regenerable)
+memory.db
+*.db
+
+# Personal data (real growth records, not for public repo)
+data/growth-records.csv
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node / Next.js
+node_modules/
+frontend/.next/
+frontend/out/
+frontend/dist/
+
+# IDE
+.vscode/
+.idea/
+
+# WorkBuddy (project-local agent data, not part of app)
+.workbuddy/
+
+# Logs
+*.log

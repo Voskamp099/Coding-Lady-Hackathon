@@ -1,0 +1,208 @@
+# app/memory_repository.py
+"""
+记忆仓储层 —— 三层流水线版本。
+
+职责：
+- save_memory：写入单条 Memory（Layer1+Layer2），保留 data-based 去重。
+- get/count：读取记忆。
+- ValueAnalysis CRUD：Layer3 聚合结果的存取。
+- clear_database：清空（前端按钮 / 切换数据集）。
+"""
+import json
+import hashlib
+from typing import List, Optional
+
+from backend.database import get_connection, clear_database as _clear_database
+from backend.models import Memory, ValueAnalysis, ValueSignal
+
+
+# ============================================================
+#  去重辅助
+# ============================================================
+def _content_hash(raw_text: str) -> str:
+    return hashlib.sha256((raw_text or "").strip().encode("utf-8")).hexdigest()
+
+
+def memory_exists_by_raw_text(raw_text: str) -> bool:
+    """检查某条 raw_text 是否已入库（data-based 去重）。"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT 1 FROM memories WHERE raw_text = ? LIMIT 1", ((raw_text or "").strip(),))
+    found = cursor.fetchone() is not None
+    conn.close()
+    return found
+
+
+def get_memory_by_raw_text(raw_text: str) -> Optional[Memory]:
+    """按 raw_text 取已存在的记忆。"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM memories WHERE raw_text = ? LIMIT 1", ((raw_text or "").strip(),))
+    row = cursor.fetchone()
+    conn.close()
+    return _row_to_memory(row) if row else None
+
+
+# ============================================================
+#  序列化
+# ============================================================
+def _row_to_memory(row) -> Optional[Memory]:
+    if row is None:
+        return None
+    try:
+        return Memory(
+            id=row["id"],
+            timestamp=row["timestamp"],
+            event=row["event"],
+            raw_text=row["raw_text"],
+            people=json.loads(row["people"]) if row["people"] else [],
+            action=row["action"] if "action" in row.keys() else "",
+            emotion_explicit=json.loads(row["emotion_explicit"]) if row["emotion_explicit"] and "emotion_explicit" in row.keys() else [],
+            importance=row["importance"],
+            behaviors=json.loads(row["behaviors"]) if row["behaviors"] and "behaviors" in row.keys() else [],
+            emotion_patterns=json.loads(row["emotion_patterns"]) if row["emotion_patterns" ] and "emotion_patterns" in row.keys() else [],
+            motivation=row["motivation"] if "motivation" in row.keys() else "",
+            learning_style=row["learning_style"] if "learning_style" in row.keys() else "",
+            social_behavior=row["social_behavior"] if "social_behavior" in row.keys() else "",
+            behavior_confidence=row["behavior_confidence"] if "behavior_confidence" in row.keys() else 0.5,
+            metadata=json.loads(row["metadata"]) if row["metadata"] else {},
+            created_at=row["created_at"] if "created_at" in row.keys() else None,
+        )
+    except Exception as e:
+        print(f"Error deserializing memory: {e}")
+        return None
+
+
+# ============================================================
+#  写入
+# ============================================================
+def save_memory(memory: Memory, skip_if_exists: bool = True):
+    """
+    写入 Memory（Layer1+Layer2）。
+
+    data-based 去重：raw_text 已存在则跳过、不新建。
+    返回 (is_new, memory)：is_new=True 新建，False 命中已有。
+    """
+    raw_text = (memory.raw_text or "").strip()
+
+    if skip_if_exists and raw_text:
+        existing = get_memory_by_raw_text(raw_text)
+        if existing is not None:
+            return False, existing
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        INSERT OR REPLACE INTO memories
+        (id, timestamp, event, raw_text, people, action, emotion_explicit, importance,
+         behaviors, emotion_patterns, motivation, learning_style, social_behavior,
+         behavior_confidence, metadata, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            str(memory.id),
+            memory.timestamp.isoformat() if hasattr(memory.timestamp, "isoformat") else str(memory.timestamp),
+            memory.event,
+            raw_text,
+            json.dumps(memory.people, ensure_ascii=False),
+            memory.action,
+            json.dumps([e for e in (memory.emotion_explicit or [])], ensure_ascii=False),
+            int(memory.importance),
+            json.dumps(memory.behaviors, ensure_ascii=False),
+            json.dumps(memory.emotion_patterns, ensure_ascii=False),
+            memory.motivation,
+            memory.learning_style,
+            memory.social_behavior,
+            float(memory.behavior_confidence),
+            json.dumps(memory.metadata, ensure_ascii=False),
+            memory.created_at.isoformat() if hasattr(memory.created_at, "isoformat") else str(memory.created_at),
+        ),
+    )
+    conn.commit()
+    conn.close()
+    return True, memory
+
+
+# ============================================================
+#  读取
+# ============================================================
+def get_all_memories() -> List[Memory]:
+    """全部记忆，按时间正序（旧→新），便于趋势分析。"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM memories ORDER BY timestamp ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    out = []
+    for row in rows:
+        m = _row_to_memory(row)
+        if m is not None:
+            out.append(m)
+    return out
+
+
+def count_memories() -> int:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) AS n FROM memories")
+    n = cursor.fetchone()["n"]
+    conn.close()
+    return n
+
+
+def clear_database():
+    """清空所有数据（保留表结构）。"""
+    return _clear_database()
+
+
+# ============================================================
+#  ValueAnalysis CRUD（Layer3 聚合结果）
+# ============================================================
+def save_value_analysis(analysis: ValueAnalysis) -> ValueAnalysis:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        INSERT OR REPLACE INTO value_analyses (id, scope, values_json, trend, created_at)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            str(analysis.id),
+            analysis.scope,
+            json.dumps([v.model_dump(mode="json") for v in analysis.values], ensure_ascii=False),
+            analysis.trend,
+            analysis.created_at.isoformat() if hasattr(analysis.created_at, "isoformat") else str(analysis.created_at),
+        ),
+    )
+    conn.commit()
+    conn.close()
+    return analysis
+
+
+def get_latest_value_analysis(scope: str = "all") -> Optional[ValueAnalysis]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT * FROM value_analyses WHERE scope = ? ORDER BY created_at DESC LIMIT 1",
+        (scope,),
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return _row_to_value_analysis(row) if row else None
+
+
+def _row_to_value_analysis(row) -> Optional[ValueAnalysis]:
+    try:
+        values_data = json.loads(row["values_json"]) if row["values_json"] else []
+        values = [ValueSignal(**v) for v in values_data]
+        return ValueAnalysis(
+            id=row["id"],
+            scope=row["scope"],
+            values=values,
+            trend=row["trend"],
+            created_at=row["created_at"],
+        )
+    except Exception as e:
+        print(f"Error deserializing value analysis: {e}")
+        return None
