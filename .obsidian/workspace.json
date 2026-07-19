@@ -184,5 +184,7 @@
     }
   },
   "active": "1ca161e35eddd127",
-  "lastOpenFiles": []
+  "lastOpenFiles": [
+    "frontend/tsconfig.tsbuildinfo"
+  ]
 }
