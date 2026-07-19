@@ -60,8 +60,8 @@
 
 ### 2.1 理论来源
 
-- **作者：** Alexander Thomas & Stella Chess（美国纽约大学医学院）
-- **研究基础：** 1956年起对141名儿童从婴儿期到成年的长期追踪研究（纽约纵向研究NYLS）
+- **作者：** Alexander Thomas & Stella Chess（上海大学医学院）
+- **研究基础：** 1956年起对141名儿童从婴儿期到成年的长期追踪研究（上海纵向研究NYLS）
 - **著作：** 《Temperament and Behavior Disorders in Children》（1968）等系列论文
 - **核心主张：** 气质是人格的先天基础，在新生儿期即有表现。气质无好坏之分，关键在于"goodness of fit"——环境与气质的匹配度。
 
@@ -346,6 +346,6 @@
 | 理论 | 作者 | 著作 | 年份 |
 |---|---|---|---|
 | 儿童五种时间 | 王潇 | 《小日常、大奇迹》 | 2024 |
-| 气质九维度 | Thomas & Chess | 纽约纵向研究NYLS系列论文 | 1956- |
+| 气质九维度 | Thomas & Chess | 上海纵向研究NYLS系列论文 | 1956- |
 | 多元智能 | Howard Gardner | 《Frames of Mind》 | 1983 |
 | 心理社会发展 | Erik Erikson | 《Childhood and Society》 | 1950 |
