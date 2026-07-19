@@ -73,7 +73,7 @@ class VectorIndex:
     用法：
         idx = VectorIndex()           # 加载并构建索引
         idx.rebuild()                 # 记忆更新后重建
-        results = idx.search("我要不要去纽约工作", k=8)
+        results = idx.search("我要不要去上海工作", k=8)
         clusters = idx.classify(n_clusters=4)
     """
 

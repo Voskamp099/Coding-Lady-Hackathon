@@ -3,7 +3,7 @@
 对话 Agent 测试脚本。
 
 用法：
-  ./venv/bin/python test_chat_agent.py "我要不要去纽约工作"
+  ./venv/bin/python test_chat_agent.py "我要不要去上海工作"
   ./venv/bin/python test_chat_agent.py "我应该去上海工作吗"
   ./venv/bin/python test_chat_agent.py "我小时候是什么样的小孩？"
 

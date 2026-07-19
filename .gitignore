@@ -32,6 +32,7 @@ frontend/dist/
 # IDE
 .vscode/
 .idea/
+.obsidian/
 
 # WorkBuddy (project-local agent data, not part of app)
 .workbuddy/
