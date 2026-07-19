@@ -145,7 +145,7 @@ export async function fetchMemoriesFromBackend(): Promise<Memory[]> {
     if (!data.memories || data.memories.length === 0) return [];
     const memories = data.memories.map((bm: BackendMemory) => backendMemoryToFrontend(bm));
     // Sort newest first
-    memories.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    memories.sort((a: Memory, b: Memory) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     return memories;
   } catch (err: any) {
     console.error('[backend] fetchMemories failed:', err);

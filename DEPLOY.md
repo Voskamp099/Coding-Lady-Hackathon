@@ -17,7 +17,7 @@ Vercel (前端 Next.js)  ──API代理──▶  Render (后端 Python FastAPI
 cd /Users/raelynn/Downloads/coding-lady
 git init
 git add .
-git commmit -m "TimeMirror hackathon MVP"
+git commit -m "TimeMirror hackathon MVP"
 # 在 GitHub 建一个 repo，然后：
 git remote add origin https://github.com/<你的用户名>/timemirror.git
 git push -u origin main

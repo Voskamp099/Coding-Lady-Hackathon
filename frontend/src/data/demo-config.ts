@@ -20,8 +20,10 @@ export const DEMO_LABELS: Record<'life' | 'child', { title: string; subtitle: st
   },
 };
 
-export { default as demoLifeData } from './demo-life.json';
-export { default as demoChildData } from './demo-child.json';
+import demoLifeData from './demo-life.json';
+import demoChildData from './demo-child.json';
+
+export { demoLifeData, demoChildData };
 
 export function getDemoData() {
   return DEMO_DATASET === 'life' ? demoLifeData : demoChildData;
