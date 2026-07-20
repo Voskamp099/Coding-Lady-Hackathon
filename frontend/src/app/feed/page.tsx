@@ -108,14 +108,41 @@ export default function FeedPage() {
     }
   }, [showToast]);
 
-  const confirmImport = useCallback(() => {
+  const confirmImport = useCallback(async () => {
     if (!importResult) return;
     saveMemories(importResult.valid);
     setMemories(getMemories());
     setImportResult(null);
     setShowImport(false);
-    showToast(`成功导入 ${importResult.valid.length} 条回忆`);
-  }, [importResult, showToast]);
+    showToast(`正在同步 ${importResult.valid.length} 条回忆到云端...`);
+    // Sync to backend DB with child_name (instant, no LLM)
+    try {
+      const { importBatchData } = await import('@/lib/backend');
+      const result = await importBatchData(
+        importResult.valid.map(m => ({
+          id: m.id,
+          date: m.date,
+          content: m.content,
+          timeTypes: m.timeTypes,
+          emotion: m.emotion,
+          scene: m.scene,
+          tags: m.tags,
+        })),
+        user?.childName
+      );
+      if (result.success) {
+        const { syncMemoriesFromBackend } = await import('@/lib/store');
+        await syncMemoriesFromBackend();
+        setMemories(getMemories());
+        setBackendCount(result.total || null);
+        showToast(`成功导入 ${result.imported} 条回忆`, 'success');
+      } else {
+        showToast(result.message || '云端同步失败，数据已保存在本地', 'error');
+      }
+    } catch {
+      showToast('云端同步失败，数据已保存在本地', 'error');
+    }
+  }, [importResult, showToast, user]);
 
   const handleAutoClassify = useCallback(async () => {
     if (!content.trim() || !user) return;
@@ -185,7 +212,7 @@ export default function FeedPage() {
       const { getDemoData, DEMO_LABELS, DEMO_DATASET } = await import('@/data/demo-config');
       const records = getDemoData() as Record<string, any>[];
       const { importDemoData } = await import('@/lib/backend');
-      const result = await importDemoData(records, true);
+      const result = await importDemoData(records, true, user?.childName);
       if (result.success) {
         const { syncMemoriesFromBackend } = await import('@/lib/store');
         await syncMemoriesFromBackend();
@@ -199,7 +226,7 @@ export default function FeedPage() {
       showToast('导入失败：' + (err.message || '未知错误'), 'error');
     }
     setImportingDemo(false);
-  }, [showToast]);
+  }, [showToast, user]);
 
   if (!user) return null;
 
@@ -376,42 +403,78 @@ export default function FeedPage() {
           </button>
         </div>
 
-        {/* Recent Memories */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-medium" style={{ color: TEXT_MAIN }}>最近投喂</h2>
-            <button
-              onClick={() => router.push('/mirror')}
-              className="text-[10px] underline underline-offset-2"
-              style={{ color: 'rgba(139,123,85,0.5)' }}
-            >
-              查看全部 →
-            </button>
+        {/* Empty State or Recent Memories */}
+        {memories.length === 0 ? (
+          <div className="text-center py-8 animate-soft-fade">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ background: 'rgba(212,200,142,0.15)' }}>
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <path d="M16 28 C16 28, 6 22, 6 14 C6 10, 9 7, 13 7 C14.5 7, 15.5 7.5, 16 8.5 C16.5 7.5, 17.5 7, 19 7 C23 7, 26 10, 26 14 C26 22, 16 28, 16 28 Z" fill="#C4A35A" opacity="0.3" />
+                <path d="M16 26 L16 16 M16 16 C16 12, 13 10, 10 11 M16 16 C16 12, 19 10, 22 11" stroke="#7B9E89" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+                <circle cx="16" cy="9" r="2" fill="#D4C88E" opacity="0.6" />
+              </svg>
+            </div>
+            <h2 className="text-base font-semibold mb-1" style={{ color: TEXT_MAIN }}>还没有回忆记录</h2>
+            <p className="text-xs mb-5" style={{ color: 'rgba(139,123,85,0.5)' }}>
+              为「{user.childName}」种下第一颗光种吧
+            </p>
+            <div className="flex gap-3 max-w-xs mx-auto">
+              <button
+                onClick={handleImportDemo}
+                disabled={importingDemo}
+                className="flex-1 py-3 rounded-2xl text-white text-sm font-medium disabled:opacity-50 transition-all active:scale-95"
+                style={{ background: 'linear-gradient(135deg, #7B9E89, #A3B599)' }}
+              >
+                {importingDemo ? '导入中...' : '导入示例数据'}
+              </button>
+              <button
+                onClick={() => setShowImport(true)}
+                className="flex-1 py-3 rounded-2xl text-sm font-medium border transition-all active:scale-95"
+                style={{ background: 'rgba(212,200,142,0.2)', borderColor: 'rgba(196,163,90,0.3)', color: TEXT_MAIN }}
+              >
+                上传我的数据
+              </button>
+            </div>
+            <p className="text-[10px] mt-4" style={{ color: 'rgba(139,123,85,0.35)' }}>
+              或在上方手动写下第一条回忆
+            </p>
           </div>
-          {getRecentMemories(memories, 3).map(m => {
-            const primaryType = m.timeTypes?.[0];
-            const t = primaryType ? CHILDREN_FIVE_TIMES.find(t => t.value === primaryType) : undefined;
-            return (
-              <div key={m.id} className="rounded-xl p-3 border" style={{ background: CARD_BG, borderColor: CARD_BORDER }}>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs">{t?.icon}</span>
-                  <span className="text-[10px]" style={{ color: 'rgba(139,123,85,0.5)' }}>{m.date}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: t?.color + '30' }}>{t?.label}</span>
-                  <span className="text-[10px]" style={{ color: 'rgba(139,123,85,0.5)' }}>{m.emotion}</span>
-                  <span className="text-[10px]" style={{ color: 'rgba(139,123,85,0.5)' }}>{m.scene}</span>
-                </div>
-                <p className="text-sm leading-relaxed line-clamp-2" style={{ color: TEXT_MAIN }}>{m.content}</p>
-                {m.tags && m.tags.length > 0 && (
-                  <div className="flex gap-1 mt-1 flex-wrap">
-                    {m.tags.map(tag => (
-                      <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(139,123,85,0.1)', color: 'rgba(139,123,85,0.6)' }}>{tag}</span>
-                    ))}
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-medium" style={{ color: TEXT_MAIN }}>最近投喂</h2>
+              <button
+                onClick={() => router.push('/mirror')}
+                className="text-[10px] underline underline-offset-2"
+                style={{ color: 'rgba(139,123,85,0.5)' }}
+              >
+                查看全部 →
+              </button>
+            </div>
+            {getRecentMemories(memories, 3).map(m => {
+              const primaryType = m.timeTypes?.[0];
+              const t = primaryType ? CHILDREN_FIVE_TIMES.find(t => t.value === primaryType) : undefined;
+              return (
+                <div key={m.id} className="rounded-xl p-3 border" style={{ background: CARD_BG, borderColor: CARD_BORDER }}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs">{t?.icon}</span>
+                    <span className="text-[10px]" style={{ color: 'rgba(139,123,85,0.5)' }}>{m.date}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: t?.color + '30' }}>{t?.label}</span>
+                    <span className="text-[10px]" style={{ color: 'rgba(139,123,85,0.5)' }}>{m.emotion}</span>
+                    <span className="text-[10px]" style={{ color: 'rgba(139,123,85,0.5)' }}>{m.scene}</span>
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                  <p className="text-sm leading-relaxed line-clamp-2" style={{ color: TEXT_MAIN }}>{m.content}</p>
+                  {m.tags && m.tags.length > 0 && (
+                    <div className="flex gap-1 mt-1 flex-wrap">
+                      {m.tags.map(tag => (
+                        <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(139,123,85,0.1)', color: 'rgba(139,123,85,0.6)' }}>{tag}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <p className="text-[10px] text-center mt-6 leading-relaxed" style={{ color: 'rgba(139,123,85,0.3)' }}>
           探觅保护每一个孩子的数据。所有记录归监护人所有，孩子具备自主能力后可申请继承。数据可随时导出或删除。

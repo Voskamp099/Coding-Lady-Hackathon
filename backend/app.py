@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any, List
 from backend.models import Memory
 from backend.agent import agent
 from backend.chat_agent import chat_agent
-from backend.memory_repository import count_memories, clear_database, get_all_memories, save_memory
+from backend.memory_repository import count_memories, clear_database, clear_memories_for_child, get_all_memories, save_memory
 import uuid
 from datetime import datetime, date
 
@@ -101,14 +101,21 @@ async def memories_list(child_name: Optional[str] = None, limit: int = 100):
     }
 
 
+class ClearRequest(BaseModel):
+    child_name: Optional[str] = Field(default=None, description="只清空该名字下的记忆；不传则清空全部")
+
+
 @router.post("/memories/clear")
-async def memories_clear():
-    """清空数据库（前端“清空”按钮 / 切换数据集时调用）。"""
-    report = clear_database()
-    # 清掉对话 agent 的向量索引缓存
+async def memories_clear(request: ClearRequest = None):
+    """清空数据库。传 child_name 则只清该名字下的记忆，不影响其他人。"""
     from backend.chat_agent import reset_index
+    if request and request.child_name:
+        count = clear_memories_for_child(request.child_name)
+        reset_index()
+        return {"success": True, "cleared": {"memories": count}, "scope": "child", "child_name": request.child_name}
+    report = clear_database()
     reset_index()
-    return {"success": True, "cleared": report}
+    return {"success": True, "cleared": report, "scope": "all"}
 
 
 @router.get("/memories/test")
@@ -177,14 +184,18 @@ def _map_demo_record(r: dict) -> Memory:
 
 class ImportDemoRequest(BaseModel):
     records: List[Dict[str, Any]] = Field(..., description="演示数据记录数组")
-    clear_first: bool = Field(default=True, description="导入前是否清空旧数据")
+    clear_first: bool = Field(default=True, description="导入前是否清空该名字下的旧数据")
+    child_name: Optional[str] = Field(default=None, description="归属孩子名字，用于按名字隔离")
 
 
 @router.post("/memories/import-demo")
 async def import_demo(request: ImportDemoRequest):
-    """一键导入演示数据（不走 LLM，秒级）。评委点一下即可灌入全部数据后对话。"""
+    """一键导入演示数据（不走 LLM，秒级）。按 child_name 隔离存储。"""
+    child_name = request.child_name or "在的李生体"
+
     if request.clear_first:
-        clear_database()
+        # 只清该名字下的记忆，不影响其他用户
+        clear_memories_for_child(child_name)
         from backend.chat_agent import reset_index
         reset_index()
 
@@ -192,9 +203,7 @@ async def import_demo(request: ImportDemoRequest):
     skip_count = 0
     for r in request.records:
         mem = _map_demo_record(r)
-        # 演示数据归属：从记录里取 child_name，缺省用 "在的李生体"（前端 demo 默认名）
-        demo_child = r.get("child_name") or "在的李生体"
-        is_new, _ = save_memory(mem, child_name=demo_child, skip_if_exists=True)
+        is_new, _ = save_memory(mem, child_name=child_name, skip_if_exists=True)
         if is_new:
             new_count += 1
         else:
@@ -204,8 +213,82 @@ async def import_demo(request: ImportDemoRequest):
         "success": True,
         "imported": new_count,
         "skipped": skip_count,
-        "total": count_memories(),
-        "message": f"已导入 {new_count} 条演示数据（跳过 {skip_count} 条重复），当前共 {count_memories()} 条",
+        "total": count_memories(child_name=child_name),
+        "child_name": child_name,
+        "message": f"已为「{child_name}」导入 {new_count} 条演示数据（跳过 {skip_count} 条重复），当前共 {count_memories(child_name=child_name)} 条",
+    }
+
+
+# ---------- 用户批量导入（不走 LLM，秒级，前端 Memory 格式） ----------
+
+class ImportBatchRequest(BaseModel):
+    memories: List[Dict[str, Any]] = Field(..., description="前端 Memory 格式的记录数组")
+    child_name: Optional[str] = Field(default=None, description="归属孩子名字")
+    clear_first: bool = Field(default=False, description="导入前是否清空该名字下的旧数据")
+
+
+@router.post("/memories/import-batch")
+async def import_batch(request: ImportBatchRequest):
+    """批量导入用户上传的回忆（Excel/CSV 解析后），不走 LLM，秒级存储。按 child_name 隔离。"""
+    child_name = request.child_name
+
+    if request.clear_first and child_name:
+        clear_memories_for_child(child_name)
+        from backend.chat_agent import reset_index
+        reset_index()
+
+    new_count = 0
+    skip_count = 0
+    for m in request.memories:
+        date_str = m.get("date") or datetime.now().isoformat()[:10]
+        content = m.get("content", "")
+        emotion = m.get("emotion", "平静")
+        scene = m.get("scene", "家")
+        time_types = m.get("timeTypes", [])
+        tags = m.get("tags", [])
+
+        raw_text = f"时间：{date_str}\n场景：{scene}\n情绪：{emotion}\n记录：{content}"
+
+        mem = Memory(
+            id=m.get("id") or str(uuid.uuid4()),
+            timestamp=date_str,
+            event=content[:200],
+            raw_text=raw_text,
+            people=[],
+            action="",
+            emotion_explicit=[emotion] if emotion else [],
+            importance=2,
+            behaviors=tags,
+            emotion_patterns=[],
+            motivation="",
+            learning_style="",
+            social_behavior="",
+            behavior_confidence=0.6,
+            metadata={
+                "source": "batch_import",
+                "date": date_str,
+                "emotion": emotion,
+                "scene": scene,
+                "timeTypes": time_types,
+                "tags": tags,
+            },
+            created_at=datetime.now(),
+        )
+        is_new, _ = save_memory(mem, child_name=child_name, skip_if_exists=True)
+        if is_new:
+            new_count += 1
+        else:
+            skip_count += 1
+
+    total = count_memories(child_name=child_name) if child_name else count_memories()
+    name_label = f"「{child_name}」" if child_name else ""
+    return {
+        "success": True,
+        "imported": new_count,
+        "skipped": skip_count,
+        "total": total,
+        "child_name": child_name,
+        "message": f"已为{name_label}导入 {new_count} 条回忆（跳过 {skip_count} 条重复），当前共 {total} 条",
     }
 
 

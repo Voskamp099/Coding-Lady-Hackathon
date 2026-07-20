@@ -158,12 +158,14 @@ export async function fetchMemoriesFromBackend(childName?: string): Promise<Memo
 }
 
 /**
- * Clear the backend database (all memories + value analyses).
+ * Clear the backend database. Pass child_name to only clear that child's data.
  */
-export async function clearBackendDB(): Promise<{ success: boolean; cleared?: any }> {
+export async function clearBackendDB(childName?: string): Promise<{ success: boolean; cleared?: any }> {
   try {
     const res = await fetch(`${BACKEND_BASE}/api/memories/clear`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ child_name: childName || null }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -217,23 +219,48 @@ export async function getBackendMemoryCount(childName?: string): Promise<number>
 
 /**
  * One-click import demo data into the backend (no LLM, instant).
- * Judges click once → all memories populated → can chat immediately.
+ * Records are tagged with the given child_name for data isolation.
  */
 export async function importDemoData(
   records: Record<string, any>[],
-  clearFirst = true
+  clearFirst = true,
+  childName?: string
 ): Promise<{ success: boolean; imported?: number; skipped?: number; total?: number; message?: string }> {
   try {
     const res = await fetch(`${BACKEND_BASE}/api/memories/import-demo`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ records, clear_first: clearFirst }),
+      body: JSON.stringify({ records, clear_first: clearFirst, child_name: childName || null }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     return data;
   } catch (err: any) {
     console.error('[backend] importDemo failed:', err);
+    return { success: false, message: err.message || 'Backend unavailable' };
+  }
+}
+
+/**
+ * Batch import user-uploaded memories (Excel/CSV parsed) into the backend.
+ * No LLM — saves directly to DB, tagged with child_name. Instant.
+ */
+export async function importBatchData(
+  memories: Record<string, any>[],
+  childName?: string,
+  clearFirst = false
+): Promise<{ success: boolean; imported?: number; skipped?: number; total?: number; message?: string }> {
+  try {
+    const res = await fetch(`${BACKEND_BASE}/api/memories/import-batch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ memories, child_name: childName || null, clear_first: clearFirst }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return data;
+  } catch (err: any) {
+    console.error('[backend] importBatch failed:', err);
     return { success: false, message: err.message || 'Backend unavailable' };
   }
 }

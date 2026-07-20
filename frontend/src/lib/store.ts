@@ -297,15 +297,10 @@ export function getMemories(): Memory[] {
         return [...newUserMems, ...backendMems];
       }
     }
-    // Fall back to seed records + user records
+    // Fall back to user records only (no seed records — new users start at 0)
     const raw = localStorage.getItem(MEMORIES_KEY);
-    const stored: Memory[] = raw ? JSON.parse(raw) : [];
-    // Merge seed records (with dynamic dates) with user records
-    const adjustedSeeds = getAdjustedSeedRecords();
-    const seedIds = new Set(adjustedSeeds.map(r => r.id));
-    const userRecords = stored.filter(r => !seedIds.has(r.id));
-    return [...adjustedSeeds, ...userRecords];
-  } catch { return [...getAdjustedSeedRecords()]; }
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
 }
 
 export function saveMemory(memory: Memory): void {
@@ -654,11 +649,12 @@ export function syncMemoryToBackend(memory: Memory): void {
 }
 
 /**
- * Clear ALL data — both the Python backend DB and localStorage.
+ * Clear data — by default only clears the current child's data (not other users').
  * Used by the frontend "清空" button.
  */
 export async function clearAllData(): Promise<{ backend: boolean; count: number }> {
-  const backendResult = await clearBackendDB();
+  const childName = _currentChildName();
+  const backendResult = await clearBackendDB(childName);
   if (typeof window !== 'undefined') {
     localStorage.removeItem(MEMORIES_KEY);
     localStorage.removeItem(BACKEND_MEMORIES_KEY);
