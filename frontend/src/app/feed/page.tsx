@@ -201,6 +201,7 @@ export default function FeedPage() {
         await syncMemoriesFromBackend();
         setMemories(getMemories());
         setBackendCount(result.total || null);
+        localStorage.setItem('demoDataset', datasetKey);
         showToast(`已导入 ${DEMO_LABELS[datasetKey].title}（${result.imported} 条）`, 'success');
       } else {
         showToast(result.message || '导入失败', 'error');
