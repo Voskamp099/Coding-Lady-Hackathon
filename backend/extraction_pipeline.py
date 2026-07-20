@@ -163,11 +163,12 @@ def _values_set():
 # ============================================================
 #  完整单条流水线：Layer1 + Layer2 → Memory
 # ============================================================
-async def extract(raw_text: str, metadata: Optional[Dict] = None) -> Memory:
+async def extract(raw_text: str, metadata: Optional[Dict] = None, child_name: Optional[str] = None) -> Memory:
     """
     单条记忆提取流水线：Layer1 → Layer2 → 组装 Memory → 存库（带去重）。
 
     data-based 去重：raw_text 已存在则直接返回已有记忆，不调 LLM、不新建。
+    child_name: 隔离标识，存入数据库 child_name 列。
     """
     # 0. 去重短路
     existing = get_memory_by_raw_text(raw_text)
@@ -202,7 +203,7 @@ async def extract(raw_text: str, metadata: Optional[Dict] = None) -> Memory:
         metadata=metadata or {},
     )
 
-    is_new, stored = save_memory(memory)
+    is_new, stored = save_memory(memory, child_name=child_name)
     return stored
 
 
@@ -212,8 +213,8 @@ async def extract(raw_text: str, metadata: Optional[Dict] = None) -> Memory:
 class ExtractionAgent:
     """分析 Agent：单条走 extract（Layer1+2），全库走 analyze_values（Layer3）。"""
 
-    async def extract(self, raw_text: str, metadata: Optional[Dict] = None) -> Memory:
-        return await extract(raw_text, metadata)
+    async def extract(self, raw_text: str, metadata: Optional[Dict] = None, child_name: Optional[str] = None) -> Memory:
+        return await extract(raw_text, metadata, child_name)
 
     async def analyze_values(self, memories=None, scope="all", query_hint="儿童成长价值观与行为模式"):
         return await run_layer3(memories, scope, query_hint)

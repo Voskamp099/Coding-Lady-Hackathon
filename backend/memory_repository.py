@@ -50,6 +50,11 @@ def _row_to_memory(row) -> Optional[Memory]:
     if row is None:
         return None
     try:
+        # 把 child_name 列镜像到 metadata，方便下游不感知 schema
+        child_name_col = row["child_name"] if "child_name" in row.keys() else None
+        metadata = json.loads(row["metadata"]) if row["metadata"] else {}
+        if child_name_col and not metadata.get("child_name"):
+            metadata["child_name"] = child_name_col
         return Memory(
             id=row["id"],
             timestamp=row["timestamp"],
@@ -65,7 +70,7 @@ def _row_to_memory(row) -> Optional[Memory]:
             learning_style=row["learning_style"] if "learning_style" in row.keys() else "",
             social_behavior=row["social_behavior"] if "social_behavior" in row.keys() else "",
             behavior_confidence=row["behavior_confidence"] if "behavior_confidence" in row.keys() else 0.5,
-            metadata=json.loads(row["metadata"]) if row["metadata"] else {},
+            metadata=metadata,
             created_at=row["created_at"] if "created_at" in row.keys() else None,
         )
     except Exception as e:
@@ -76,14 +81,21 @@ def _row_to_memory(row) -> Optional[Memory]:
 # ============================================================
 #  写入
 # ============================================================
-def save_memory(memory: Memory, skip_if_exists: bool = True):
+def save_memory(memory: Memory, child_name: Optional[str] = None, skip_if_exists: bool = True):
     """
     写入 Memory（Layer1+Layer2）。
 
     data-based 去重：raw_text 已存在则跳过、不新建。
+    child_name: 隔离标识。同一名字的多人进入会看到同一组记忆。
     返回 (is_new, memory)：is_new=True 新建，False 命中已有。
     """
     raw_text = (memory.raw_text or "").strip()
+
+    # 把 child_name 镜像到 metadata，方便下游 / 前端读取
+    if child_name:
+        if memory.metadata is None:
+            memory.metadata = {}
+        memory.metadata["child_name"] = child_name
 
     if skip_if_exists and raw_text:
         existing = get_memory_by_raw_text(raw_text)
@@ -95,13 +107,14 @@ def save_memory(memory: Memory, skip_if_exists: bool = True):
     cursor.execute(
         """
         INSERT OR REPLACE INTO memories
-        (id, timestamp, event, raw_text, people, action, emotion_explicit, importance,
+        (id, child_name, timestamp, event, raw_text, people, action, emotion_explicit, importance,
          behaviors, emotion_patterns, motivation, learning_style, social_behavior,
          behavior_confidence, metadata, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             str(memory.id),
+            child_name,
             memory.timestamp.isoformat() if hasattr(memory.timestamp, "isoformat") else str(memory.timestamp),
             memory.event,
             raw_text,
@@ -127,11 +140,21 @@ def save_memory(memory: Memory, skip_if_exists: bool = True):
 # ============================================================
 #  读取
 # ============================================================
-def get_all_memories() -> List[Memory]:
-    """全部记忆，按时间正序（旧→新），便于趋势分析。"""
+def get_all_memories(child_name: Optional[str] = None) -> List[Memory]:
+    """
+    全部记忆，按时间正序（旧→新），便于趋势分析。
+
+    child_name: 过滤参数。传 None 返回全部；传名字则只返回该名字下的记忆。
+    """
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM memories ORDER BY timestamp ASC")
+    if child_name:
+        cursor.execute(
+            "SELECT * FROM memories WHERE child_name = ? ORDER BY timestamp ASC",
+            (child_name,),
+        )
+    else:
+        cursor.execute("SELECT * FROM memories ORDER BY timestamp ASC")
     rows = cursor.fetchall()
     conn.close()
     out = []
@@ -142,10 +165,19 @@ def get_all_memories() -> List[Memory]:
     return out
 
 
-def count_memories() -> int:
+def count_memories(child_name: Optional[str] = None) -> int:
+    """
+    记忆总数。child_name 不为空时仅统计该名字下的记忆。
+    """
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) AS n FROM memories")
+    if child_name:
+        cursor.execute(
+            "SELECT COUNT(*) AS n FROM memories WHERE child_name = ?",
+            (child_name,),
+        )
+    else:
+        cursor.execute("SELECT COUNT(*) AS n FROM memories")
     n = cursor.fetchone()["n"]
     conn.close()
     return n

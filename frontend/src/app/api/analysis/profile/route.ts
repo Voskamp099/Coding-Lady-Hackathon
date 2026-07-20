@@ -5,7 +5,8 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
     const scope = body.scope || 'all';
-    const res = await fetch(`${BACKEND_URL}/api/analysis/values?scope=${scope}`, {
+    const childName = body.child_name || '';
+    const res = await fetch(`${BACKEND_URL}/api/analysis/values?scope=${scope}${childName ? `&child_name=${encodeURIComponent(childName)}` : ''}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

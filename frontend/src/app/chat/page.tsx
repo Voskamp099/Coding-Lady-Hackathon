@@ -6,6 +6,7 @@ import { BottomNav } from '@/components/bottom-nav';
 import { ParticleAvatar } from '@/components/particle-avatar';
 import { getUser, getMemories, CHILDREN_FIVE_TIMES, syncMemoriesFromBackend } from '@/lib/store';
 import { Markdown } from '@/components/markdown';
+import { LoadingQuotes } from '@/components/loading-quotes';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -39,11 +40,14 @@ export default function ChatPage() {
   }, [messages]);
 
   const buildMemoryContext = useCallback(() => {
+    // 干净版：给 LLM 看的记忆摘要。不用 [xxx] 方括号（LLM 会复读），
+    // 改成 markdown 列表，类型/情绪/场景用"主题"短字段
     const memories = getMemories();
-    return memories.slice(0, 20).map(m => {
+    return memories.slice(0, 10).map(m => {
       const primaryType = m.timeTypes?.[0];
-      const t = primaryType ? CHILDREN_FIVE_TIMES.find(t => t.value === primaryType) : undefined;
-      return `${m.date}: ${m.content} [${t?.label || '其他'}] [${m.emotion}] [${m.scene}]`;
+      const t = primaryType ? CHILDREN_FIVE_TIMES.find(x => x.value === primaryType) : undefined;
+      const topic = t?.label || '日常';
+      return `- ${m.date}（${m.scene} · ${m.emotion} · ${topic}）：${m.content}`;
     }).join('\n');
   }, []);
 
@@ -244,11 +248,7 @@ export default function ChatPage() {
                 </svg>
               </div>
               <div className="glass-warm rounded-2xl rounded-bl-md px-4 py-2.5">
-                <div className="flex gap-1">
-                  <span className="w-1.5 h-1.5 bg-[#C4A35A] rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
-                  <span className="w-1.5 h-1.5 bg-[#C4A35A] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                  <span className="w-1.5 h-1.5 bg-[#C4A35A] rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
-                </div>
+                <LoadingQuotes />
               </div>
             </div>
           )}

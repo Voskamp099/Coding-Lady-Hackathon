@@ -103,7 +103,8 @@ export async function createMemoryBackend(
   emotion: string,
   scene: string,
   timeTypes: TimeTypeKey[],
-  tags: string[]
+  tags: string[],
+  childName?: string
 ): Promise<{ success: boolean; memory?: BackendMemory; message: string }> {
   try {
     const rawText = `时间：${date}\n场景：${scene}\n情绪：${emotion}\n记录：${content}`;
@@ -112,6 +113,7 @@ export async function createMemoryBackend(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         raw_text: rawText,
+        child_name: childName || undefined,
         metadata: {
           source: 'frontend',
           date,
@@ -132,12 +134,14 @@ export async function createMemoryBackend(
 }
 
 /**
- * Fetch all memories from the backend DB.
+ * Fetch memories from the backend DB, filtered by child name.
  * Returns frontend-format Memory[] sorted newest-first.
  */
-export async function fetchMemoriesFromBackend(): Promise<Memory[]> {
+export async function fetchMemoriesFromBackend(childName?: string): Promise<Memory[]> {
   try {
-    const res = await fetch(`${BACKEND_BASE}/api/memories/list?limit=200`, {
+    const params = new URLSearchParams({ limit: '200' });
+    if (childName) params.set('child_name', childName);
+    const res = await fetch(`${BACKEND_BASE}/api/memories/list?${params.toString()}`, {
       method: 'GET',
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -173,12 +177,14 @@ export async function clearBackendDB(): Promise<{ success: boolean; cleared?: an
 /**
  * Run Layer3 value synthesis on the backend and get the analysis result.
  */
-export async function fetchAnalysisFromBackend(): Promise<AnalysisResult | null> {
+export async function fetchAnalysisFromBackend(childName?: string): Promise<AnalysisResult | null> {
   try {
-    const res = await fetch(`${BACKEND_BASE}/api/analysis/profile`, {
+    const params = new URLSearchParams({ scope: 'all' });
+    if (childName) params.set('child_name', childName);
+    const res = await fetch(`${BACKEND_BASE}/api/analysis/values?${params.toString()}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scope: 'all' }),
+      body: JSON.stringify({}),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -190,11 +196,14 @@ export async function fetchAnalysisFromBackend(): Promise<AnalysisResult | null>
 }
 
 /**
- * Get memory count from backend.
+ * Get memory count from backend, filtered by child name if provided.
  */
-export async function getBackendMemoryCount(): Promise<number> {
+export async function getBackendMemoryCount(childName?: string): Promise<number> {
   try {
-    const res = await fetch(`${BACKEND_BASE}/api/memories/count`);
+    const params = new URLSearchParams();
+    if (childName) params.set('child_name', childName);
+    const qs = params.toString();
+    const res = await fetch(`${BACKEND_BASE}/api/memories/count${qs ? `?${qs}` : ''}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     return data.count || 0;

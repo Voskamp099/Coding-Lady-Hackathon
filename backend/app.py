@@ -18,6 +18,7 @@ from datetime import datetime, date
 
 class CreateMemoryRequest(BaseModel):
     raw_text: str = Field(..., min_length=1, description="原始事件文本")
+    child_name: Optional[str] = Field(default=None, description="归属孩子的名字，用于数据隔离")
     metadata: Optional[Dict[str, Any]] = Field(default=None)
 
 
@@ -31,6 +32,7 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, description="用户问题")
     k: int = Field(default=8, description="检索相关记忆条数")
     with_evidence: bool = Field(default=False, description="是否返回检索证据")
+    child_name: Optional[str] = Field(default=None, description="归属孩子的名字，用于按名字隔离检索")
 
 
 class ChatResponse(BaseModel):
@@ -58,22 +60,26 @@ router = APIRouter(prefix="/api", tags=["timemirror"])
 async def create_memory(request: CreateMemoryRequest):
     """创建记忆（走 Layer1+Layer2 三层流水线）。"""
     try:
-        memory = await agent.extract(raw_text=request.raw_text, metadata=request.metadata)
+        memory = await agent.extract(
+            raw_text=request.raw_text,
+            metadata=request.metadata,
+            child_name=request.child_name,
+        )
         return CreateMemoryResponse(success=True, memory=memory, message="记忆创建成功")
     except Exception as e:
         return CreateMemoryResponse(success=False, memory=None, message=f"创建失败: {e}")
 
 
 @router.get("/memories/count")
-async def memories_count():
-    """记忆总数。"""
-    return {"count": count_memories()}
+async def memories_count(child_name: Optional[str] = None):
+    """记忆总数。传 child_name 则仅统计该名字下的记忆。"""
+    return {"count": count_memories(child_name=child_name)}
 
 
 @router.get("/memories/list")
-async def memories_list(limit: int = 100):
-    """列出记忆（按时间正序）。返回前端需要的完整字段。"""
-    mems = get_all_memories()
+async def memories_list(child_name: Optional[str] = None, limit: int = 100):
+    """列出记忆（按时间正序）。传 child_name 则只返回该名字下的记忆。"""
+    mems = get_all_memories(child_name=child_name)
     return {
         "count": len(mems),
         "memories": [
@@ -186,7 +192,9 @@ async def import_demo(request: ImportDemoRequest):
     skip_count = 0
     for r in request.records:
         mem = _map_demo_record(r)
-        is_new, _ = save_memory(mem, skip_if_exists=True)
+        # 演示数据归属：从记录里取 child_name，缺省用 "在的李生体"（前端 demo 默认名）
+        demo_child = r.get("child_name") or "在的李生体"
+        is_new, _ = save_memory(mem, child_name=demo_child, skip_if_exists=True)
         if is_new:
             new_count += 1
         else:
@@ -204,12 +212,12 @@ async def import_demo(request: ImportDemoRequest):
 # ---------- Layer3 价值分析 ----------
 
 @router.post("/analysis/values", response_model=ValueAnalysisResponse)
-async def analyze_values(scope: str = "all"):
-    """对全库跑 Layer3 价值综合。"""
+async def analyze_values(scope: str = "all", child_name: Optional[str] = None):
+    """对全库（或指定 child_name 范围）跑 Layer3 价值综合。"""
     try:
-        mems = get_all_memories()
+        mems = get_all_memories(child_name=child_name)
         if not mems:
-            return ValueAnalysisResponse(success=False, message="记忆库为空")
+            return ValueAnalysisResponse(success=False, message="该名字下还没有记忆，无法分析")
         analysis = await agent.analyze_values(memories=mems, scope=scope)
         return ValueAnalysisResponse(
             success=True,
@@ -230,6 +238,7 @@ async def chat(request: ChatRequest):
         user_message=request.message,
         k=request.k,
         with_evidence=request.with_evidence,
+        child_name=request.child_name,
     )
     return ChatResponse(
         answer=result["answer"],

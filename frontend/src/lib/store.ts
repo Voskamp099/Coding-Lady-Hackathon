@@ -598,6 +598,15 @@ export function generateValueSeedsFromMemories(memories: Memory[]): string[] {
 /* ========== 后端同步 (Backend Sync) ========== */
 
 /**
+ * 当前用户的孩子名字（用于 API 隔离）。未登录返回 undefined。
+ */
+function _currentChildName(): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const u = getUser();
+  return u?.childName || undefined;
+}
+
+/**
  * Sync memories from the Python backend into localStorage.
  * Call this on page load to populate the frontend with backend DB data.
  * Returns the number of memories fetched.
@@ -605,7 +614,7 @@ export function generateValueSeedsFromMemories(memories: Memory[]): string[] {
 export async function syncMemoriesFromBackend(): Promise<number> {
   if (typeof window === 'undefined') return 0;
   try {
-    const backendMems = await fetchMemoriesFromBackend();
+    const backendMems = await fetchMemoriesFromBackend(_currentChildName());
     if (backendMems.length > 0) {
       localStorage.setItem(BACKEND_MEMORIES_KEY, JSON.stringify(backendMems));
     } else {
@@ -631,7 +640,8 @@ export function syncMemoryToBackend(memory: Memory): void {
     memory.emotion,
     memory.scene,
     memory.timeTypes,
-    memory.tags
+    memory.tags,
+    _currentChildName()
   ).then(result => {
     if (result.success) {
       console.log('[store] Memory synced to backend:', memory.id);
@@ -660,7 +670,7 @@ export async function clearAllData(): Promise<{ backend: boolean; count: number 
  * Check if backend is connected and has data.
  */
 export async function checkBackendStatus(): Promise<{ connected: boolean; count: number }> {
-  const count = await getBackendMemoryCount();
+  const count = await getBackendMemoryCount(_currentChildName());
   return { connected: count > 0, count };
 }
 
@@ -673,7 +683,7 @@ export async function fetchBackendValueAnalysis(): Promise<{
   trend: string;
 } | null> {
   try {
-    const analysis = await fetchAnalysisFromBackend();
+    const analysis = await fetchAnalysisFromBackend(_currentChildName());
     if (!analysis || !analysis.success) return null;
     return {
       values: analysis.values || [],
