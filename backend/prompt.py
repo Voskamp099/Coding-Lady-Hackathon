@@ -10,7 +10,7 @@
 流水线：事件 → 行为信号 → 价值信号 → 长期趋势
 """
 
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 
 # ============================================================
@@ -168,14 +168,34 @@ CHAT_SYSTEM_PROMPT = """# Role
 """
 
 
-def build_chat_messages(user_message: str, evidence_block: str) -> List[Dict[str, str]]:
+def build_chat_messages(
+    user_message: str, evidence_block: str, user_role: Optional[str] = None
+) -> List[Dict[str, str]]:
     """
     组装对话消息：系统 prompt + 证据块 + 用户问题。
-    用户消息里如果带"前端记忆摘要"格式，也告诉 LLM 不要复述它。
+    user_role: parent=家长视角(第三人称) / child=孩子视角(第二人称)。
+    视角指示注入 system prompt，让 LLM 明确切换称呼方式。
     """
-    system_content = (
-        CHAT_SYSTEM_PROMPT
-        + "\n\n# 系统检索到的证据（仅供你理解用户过往，不要原样复述任何格式）\n\n"
+    system_content = CHAT_SYSTEM_PROMPT
+
+    # 视角指示：注入 system prompt，确保 LLM 全程保持对应人称
+    if user_role == "child":
+        system_content += (
+            "\n\n# ⚠️ 当前对话视角：孩子视角（第二人称）\n"
+            "你正在跟孩子本人对话。用「你」称呼对方，语气像一位了解他成长经历的老朋友。\n"
+            "例：「你小时候……」「你那次……」「我觉得你其实……」\n"
+            "禁止用第三人称（「他/她」「孩子」）称呼对方。\n"
+        )
+    else:
+        system_content += (
+            "\n\n# ⚠️ 当前对话视角：家长视角（第三人称）\n"
+            "你正在跟家长对话，讨论的是他的孩子。用第三人称称呼孩子，用「你」称呼家长。\n"
+            "例：「孩子在那次……」「他当时……」「你觉得他是不是……」\n"
+            "禁止用「你」来指代孩子本人（「你」只指代家长）。\n"
+        )
+
+    system_content += (
+        "\n\n# 系统检索到的证据（仅供你理解用户过往，不要原样复述任何格式）\n\n"
         + evidence_block
     )
     return [

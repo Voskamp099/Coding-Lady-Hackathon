@@ -9,16 +9,25 @@ from typing import Optional, Dict, Any, List
 from backend.models import Memory
 from backend.agent import agent
 from backend.chat_agent import chat_agent
-from backend.memory_repository import count_memories, clear_database, clear_memories_for_child, get_all_memories, save_memory
+from backend.memory_repository import (
+    count_memories,
+    clear_database,
+    clear_memories_for_child,
+    get_all_memories,
+    save_memory,
+)
 import uuid
 from datetime import datetime, date
 
 
 # ============ 输入/输出模型 ============
 
+
 class CreateMemoryRequest(BaseModel):
     raw_text: str = Field(..., min_length=1, description="原始事件文本")
-    child_name: Optional[str] = Field(default=None, description="归属孩子的名字，用于数据隔离")
+    child_name: Optional[str] = Field(
+        default=None, description="归属孩子的名字，用于数据隔离"
+    )
     metadata: Optional[Dict[str, Any]] = Field(default=None)
 
 
@@ -32,7 +41,13 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, description="用户问题")
     k: int = Field(default=8, description="检索相关记忆条数")
     with_evidence: bool = Field(default=False, description="是否返回检索证据")
-    child_name: Optional[str] = Field(default=None, description="归属孩子的名字，用于按名字隔离检索")
+    child_name: Optional[str] = Field(
+        default=None, description="归属孩子的名字，用于按名字隔离检索"
+    )
+    user_role: Optional[str] = Field(
+        default="parent",
+        description="对话视角：parent=家长视角(第三人称) / child=孩子视角(第二人称)",
+    )
 
 
 class ChatResponse(BaseModel):
@@ -56,6 +71,7 @@ router = APIRouter(prefix="/api", tags=["timemirror"])
 
 # ---------- 记忆 ----------
 
+
 @router.post("/memories/create", response_model=CreateMemoryResponse)
 async def create_memory(request: CreateMemoryRequest):
     """创建记忆（走 Layer1+Layer2 三层流水线）。"""
@@ -67,7 +83,9 @@ async def create_memory(request: CreateMemoryRequest):
         )
         return CreateMemoryResponse(success=True, memory=memory, message="记忆创建成功")
     except Exception as e:
-        return CreateMemoryResponse(success=False, memory=None, message=f"创建失败: {e}")
+        return CreateMemoryResponse(
+            success=False, memory=None, message=f"创建失败: {e}"
+        )
 
 
 @router.get("/memories/count")
@@ -85,7 +103,9 @@ async def memories_list(child_name: Optional[str] = None, limit: int = 100):
         "memories": [
             {
                 "id": m.id,
-                "timestamp": m.timestamp.isoformat() if hasattr(m.timestamp, "isoformat") else str(m.timestamp),
+                "timestamp": m.timestamp.isoformat()
+                if hasattr(m.timestamp, "isoformat")
+                else str(m.timestamp),
                 "event": m.event,
                 "raw_text": m.raw_text,
                 "behaviors": m.behaviors,
@@ -102,19 +122,30 @@ async def memories_list(child_name: Optional[str] = None, limit: int = 100):
 
 
 class ClearRequest(BaseModel):
-    child_name: Optional[str] = Field(default=None, description="只清空该名字下的记忆；不传则清空全部")
+    child_name: Optional[str] = Field(
+        default=None, description="只清空该名字下的记忆；不传则清空全部"
+    )
 
 
 @router.post("/memories/clear")
 async def memories_clear(request: ClearRequest = None):
     """清空数据库。必须传 child_name，只清该名字下的记忆，绝不全局清空。"""
     from backend.chat_agent import reset_index
+
     if not request or not request.child_name:
         # 安全措施：不传 child_name 时拒绝操作，绝不全局清空
-        return {"success": False, "error": "必须指定 child_name 才能清空，不允许全局清空"}
+        return {
+            "success": False,
+            "error": "必须指定 child_name 才能清空，不允许全局清空",
+        }
     count = clear_memories_for_child(request.child_name)
     reset_index()
-    return {"success": True, "cleared": {"memories": count}, "scope": "child", "child_name": request.child_name}
+    return {
+        "success": True,
+        "cleared": {"memories": count},
+        "scope": "child",
+        "child_name": request.child_name,
+    }
 
 
 @router.get("/memories/test")
@@ -125,6 +156,7 @@ async def test_endpoint():
 # ---------- 演示数据一键导入（不走 LLM，秒级） ----------
 
 _CONF_MAP = {"high": 3, "medium": 2, "low": 1}
+
 
 def _map_demo_record(r: dict) -> Memory:
     """把演示 JSON 记录映射成 Memory（sample-children 儿童 / sample-life 人生 两种格式都兼容）。"""
@@ -157,7 +189,7 @@ def _map_demo_record(r: dict) -> Memory:
     importance = _CONF_MAP.get(str(conf).lower(), 2)
 
     return Memory(
-        id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"demo-{r.get('id','')}")),
+        id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"demo-{r.get('id', '')}")),
         timestamp=ts,
         event=event,
         raw_text=raw_text,
@@ -198,8 +230,12 @@ def _display_name(child_name: Optional[str]) -> str:
 
 class ImportDemoRequest(BaseModel):
     records: List[Dict[str, Any]] = Field(..., description="演示数据记录数组")
-    clear_first: bool = Field(default=True, description="导入前是否清空该名字下的旧数据")
-    child_name: Optional[str] = Field(default=None, description="归属孩子名字，用于按名字隔离")
+    clear_first: bool = Field(
+        default=True, description="导入前是否清空该名字下的旧数据"
+    )
+    child_name: Optional[str] = Field(
+        default=None, description="归属孩子名字，用于按名字隔离"
+    )
 
 
 @router.post("/memories/import-demo")
@@ -211,6 +247,7 @@ async def import_demo(request: ImportDemoRequest):
         # 只清该名字下的记忆，不影响其他用户
         clear_memories_for_child(child_name)
         from backend.chat_agent import reset_index
+
         reset_index()
 
     new_count = 0
@@ -235,10 +272,15 @@ async def import_demo(request: ImportDemoRequest):
 
 # ---------- 用户批量导入（不走 LLM，秒级，前端 Memory 格式） ----------
 
+
 class ImportBatchRequest(BaseModel):
-    memories: List[Dict[str, Any]] = Field(..., description="前端 Memory 格式的记录数组")
+    memories: List[Dict[str, Any]] = Field(
+        ..., description="前端 Memory 格式的记录数组"
+    )
     child_name: Optional[str] = Field(default=None, description="归属孩子名字")
-    clear_first: bool = Field(default=False, description="导入前是否清空该名字下的旧数据")
+    clear_first: bool = Field(
+        default=False, description="导入前是否清空该名字下的旧数据"
+    )
 
 
 @router.post("/memories/import-batch")
@@ -249,6 +291,7 @@ async def import_batch(request: ImportBatchRequest):
     if request.clear_first and child_name:
         clear_memories_for_child(child_name)
         from backend.chat_agent import reset_index
+
         reset_index()
 
     new_count = 0
@@ -308,13 +351,16 @@ async def import_batch(request: ImportBatchRequest):
 
 # ---------- Layer3 价值分析 ----------
 
+
 @router.post("/analysis/values", response_model=ValueAnalysisResponse)
 async def analyze_values(scope: str = "all", child_name: Optional[str] = None):
     """对全库（或指定 child_name 范围）跑 Layer3 价值综合。"""
     try:
         mems = get_all_memories(child_name=child_name)
         if not mems:
-            return ValueAnalysisResponse(success=False, message="该名字下还没有记忆，无法分析")
+            return ValueAnalysisResponse(
+                success=False, message="该名字下还没有记忆，无法分析"
+            )
         analysis = await agent.analyze_values(memories=mems, scope=scope)
         return ValueAnalysisResponse(
             success=True,
@@ -328,6 +374,7 @@ async def analyze_values(scope: str = "all", child_name: Optional[str] = None):
 
 # ---------- 对话 Agent ----------
 
+
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """对话 Agent：基于分层记忆 + 本体 + RAG + Layer3 做决策分析。"""
@@ -336,6 +383,7 @@ async def chat(request: ChatRequest):
         k=request.k,
         with_evidence=request.with_evidence,
         child_name=request.child_name,
+        user_role=request.user_role,
     )
     return ChatResponse(
         answer=result["answer"],
@@ -346,6 +394,7 @@ async def chat(request: ChatRequest):
 
 
 # ---------- 五种时间 AI 分类（轻量级，用 KB 定义做 RAG） ----------
+
 
 class ClassifyTimeRequest(BaseModel):
     text: str = Field(..., min_length=1, description="要分类的记忆文本")
