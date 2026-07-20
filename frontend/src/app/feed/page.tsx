@@ -13,6 +13,7 @@ import {
   getCurrentIdentity, logoutUser,
 } from '@/lib/store';
 import { parseExcelFile, downloadTemplate, parsedRowsToMemories } from '@/lib/excel-utils';
+import { DEMO_LABELS, DemoDatasetKey } from '@/data/demo-config';
 
 const GOLD = '#C4A35A';
 const GOLD_LIGHT = '#D4C88E';
@@ -44,6 +45,7 @@ export default function FeedPage() {
   const [clearing, setClearing] = useState(false);
   const [backendCount, setBackendCount] = useState<number | null>(null);
   const [importingDemo, setImportingDemo] = useState(false);
+  const [showDemoSelect, setShowDemoSelect] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
 
   useEffect(() => {
@@ -186,11 +188,12 @@ export default function FeedPage() {
     setShowClear(false);
   }, [showToast]);
 
-  const handleImportDemo = useCallback(async () => {
+  const handleImportDemo = useCallback(async (datasetKey: 'life' | 'child') => {
     setImportingDemo(true);
+    setShowDemoSelect(false);
     try {
-      const { getDemoData, DEMO_LABELS, DEMO_DATASET } = await import('@/data/demo-config');
-      const records = getDemoData() as Record<string, any>[];
+      const { getDemoData, DEMO_LABELS } = await import('@/data/demo-config');
+      const records = getDemoData(datasetKey) as Record<string, any>[];
       const { importDemoData } = await import('@/lib/backend');
       const result = await importDemoData(records, true, getCurrentIdentity());
       if (result.success) {
@@ -198,7 +201,7 @@ export default function FeedPage() {
         await syncMemoriesFromBackend();
         setMemories(getMemories());
         setBackendCount(result.total || null);
-        showToast(`已导入 ${DEMO_LABELS[DEMO_DATASET].title}（${result.imported} 条）`, 'success');
+        showToast(`已导入 ${DEMO_LABELS[datasetKey].title}（${result.imported} 条）`, 'success');
       } else {
         showToast(result.message || '导入失败', 'error');
       }
@@ -255,11 +258,11 @@ export default function FeedPage() {
               批量导入
             </button>
             <button
-              onClick={handleImportDemo}
+              onClick={() => setShowDemoSelect(true)}
               disabled={importingDemo}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors disabled:opacity-50"
               style={{ background: 'rgba(123,158,137,0.15)', borderColor: 'rgba(123,158,137,0.3)', color: '#5C7A68' }}
-              title="一键导入演示数据，评委可直接体验对话"
+              title="选择演示数据集，一键导入"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
               {importingDemo ? '导入中...' : '演示数据'}
@@ -408,7 +411,7 @@ export default function FeedPage() {
             </p>
             <div className="flex gap-3 max-w-xs mx-auto">
               <button
-                onClick={handleImportDemo}
+                onClick={() => setShowDemoSelect(true)}
                 disabled={importingDemo}
                 className="flex-1 py-3 rounded-2xl text-white text-sm font-medium disabled:opacity-50 transition-all active:scale-95"
                 style={{ background: 'linear-gradient(135deg, #7B9E89, #A3B599)' }}
@@ -663,6 +666,52 @@ export default function FeedPage() {
                 切换账户
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {showDemoSelect && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(91,74,46,0.45)' }} onClick={() => setShowDemoSelect(false)}>
+          <div
+            className="w-full max-w-md rounded-3xl p-6 shadow-2xl"
+            style={{ background: 'rgba(255,251,240,0.98)', border: `1px solid ${CARD_BORDER}` }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-base font-semibold" style={{ color: TEXT_MAIN }}>选择演示数据</h2>
+              <button onClick={() => setShowDemoSelect(false)} className="text-xs" style={{ color: TEXT_SUB }}>取消</button>
+            </div>
+            <p className="text-xs mb-5" style={{ color: 'rgba(139,123,85,0.5)' }}>
+              两套数据各有侧重，导入后可清空重来
+            </p>
+            <div className="space-y-3">
+              {(['life', 'child'] as DemoDatasetKey[]).map(key => {
+                const info = DEMO_LABELS[key];
+                const isLife = key === 'life';
+                return (
+                  <button
+                    key={key}
+                    onClick={() => handleImportDemo(key)}
+                    disabled={importingDemo}
+                    className="w-full text-left p-4 rounded-2xl border transition-all active:scale-[0.98] disabled:opacity-50"
+                    style={{
+                      background: isLife ? 'rgba(123,158,137,0.10)' : 'rgba(196,163,90,0.10)',
+                      borderColor: isLife ? 'rgba(123,158,137,0.35)' : 'rgba(196,163,90,0.35)',
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-semibold" style={{ color: TEXT_MAIN }}>{info.title}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: isLife ? 'rgba(123,158,137,0.2)' : 'rgba(196,163,90,0.2)', color: isLife ? GREEN : GOLD_DEEP }}>
+                        {info.count} 条
+                      </span>
+                    </div>
+                    <p className="text-xs leading-relaxed" style={{ color: 'rgba(139,123,85,0.6)' }}>{info.subtitle}</p>
+                  </button>
+                );
+              })}
+            </div>
+            {importingDemo && (
+              <p className="text-xs mt-4 text-center" style={{ color: TEXT_SUB }}>正在导入，请稍候…</p>
+            )}
           </div>
         </div>
       )}

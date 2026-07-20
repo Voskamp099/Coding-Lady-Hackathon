@@ -18,13 +18,19 @@ const BTN_GRADIENT = 'linear-gradient(90deg, #C4A35A, #7B9E89)';
 export default function ChatPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [parentMessages, setParentMessages] = useState<Message[]>([]);
+  const [childMessages, setChildMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [perspective, setPerspective] = useState<'parent' | 'child'>('parent');
-  const [showSuggestions, setShowSuggestions] = useState(true);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // 当前视角对应的 messages 和 setter
+  const messages = perspective === 'parent' ? parentMessages : childMessages;
+  const setMessages = perspective === 'parent' ? setParentMessages : setChildMessages;
+  // 示例问题：只在当前视角还没有聊天记录时显示
+  const showSuggestions = messages.length === 0;
 
   useEffect(() => {
     const u = getUser();
@@ -42,7 +48,6 @@ export default function ChatPage() {
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || streaming) return;
     setStreaming(true);
-    setShowSuggestions(false);
 
     const userMsg: Message = { role: 'user', content: text };
     setMessages(prev => [...prev, userMsg]);
