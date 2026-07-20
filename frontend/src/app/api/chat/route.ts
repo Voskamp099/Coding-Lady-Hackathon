@@ -41,23 +41,22 @@ export async function POST(request: NextRequest) {
       : childName;
 
     // Build the enriched message for the Python backend.
-    // 用隐式叙述而非"对话上下文"标签（避免 LLM 复读前缀）
+    // 不再发前端 memoryContext — 后端自己做 RAG 检索，避免双份上下文浪费 token
     const perspectiveNote = userRole === 'parent'
       ? `家长视角：用第三人称谈论孩子「${displayChildName}」`
       : `孩子视角：用第二人称跟「${displayChildName}」本人对话`;
     const enrichedMessage = [
       `（${perspectiveNote}）`,
-      memoryContext ? `\n以下是用户过往的真实成长记录，作为你回答的事实基础（不要复述格式）：\n${memoryContext.slice(0, 1500)}` : '',
       `\n\n用户当前的问题：${lastUserMsg.content}`,
     ].filter(Boolean).join('\n');
 
-    // Call Python backend chat agent
+    // Call Python backend chat agent (k=5, 精简检索)
     const backendRes = await fetch(`${BACKEND_URL}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         message: enrichedMessage,
-        k: 10,
+        k: 5,
         with_evidence: false,
         child_name: childName,  // 透传到后端做按名字的检索隔离
       }),
@@ -82,8 +81,8 @@ export async function POST(request: NextRequest) {
           for (const segment of segments) {
             const data = JSON.stringify({ content: segment });
             controller.enqueue(encoder.encode(`data: ${data}\n\n`));
-            // Small delay between segments for natural feel
-            await new Promise(resolve => setTimeout(resolve, 30));
+            // Small delay between segments for natural feel (kept short so答复更快呈现)
+            await new Promise(resolve => setTimeout(resolve, 10));
           }
           controller.enqueue(encoder.encode(`data: {"done":true}\n\n`));
           controller.close();
@@ -118,8 +117,8 @@ function splitIntoSegments(text: string): string[] {
 
   for (const part of parts) {
     buffer += part;
-    // Flush when buffer is long enough or hits a newline
-    if (buffer.length >= 12 || buffer.includes('\n')) {
+    // Flush when buffer is long enough or hits a newline（buffer 调大→分段更少→整体更快呈现）
+    if (buffer.length >= 24 || buffer.includes('\n')) {
       segments.push(buffer);
       buffer = '';
     }

@@ -150,41 +150,19 @@ export default function FeedPage() {
     if (!content.trim() || !user) return;
     setAutoClassifying(true);
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch('/api/classify-time', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [{
-            role: 'user',
-            content: `请分析下面这段回忆属于哪种时间类型。只返回一个类型关键字，不要其他文字。可选类型：${CHILDREN_FIVE_TIMES.map(t => `${t.value}(${t.label})`).join('、')}。\n\n回忆内容：${content.trim()}`
-          }],
-          childName: getCurrentIdentity(),
-          memoryContext: '',
-          userRole: 'parent',
-        }),
+        body: JSON.stringify({ text: content.trim() }),
       });
-      const reader = res.body?.getReader();
-      if (!reader) { showToast('分类失败，请重试', 'error'); setAutoClassifying(false); return; }
-      let fullText = '';
-      const decoder = new TextDecoder();
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n').filter(l => l.startsWith('data: '));
-        for (const line of lines) {
-          try {
-            const json = JSON.parse(line.slice(6));
-            if (json.content) fullText += json.content;
-          } catch {}
+      const data = await res.json();
+      const matchedType = data.type;
+      const matchedLabel = data.label;
+      if (matchedType && CHILDREN_FIVE_TIMES.find(t => t.value === matchedType)) {
+        if (!timeType.includes(matchedType as TimeTypeKey)) {
+          setTimeType(prev => [...prev, matchedType as TimeTypeKey]);
         }
-      }
-      const matched = CHILDREN_FIVE_TIMES.find(t => fullText.includes(t.value));
-      if (matched) {
-        if (!timeType.includes(matched.value as TimeTypeKey)) {
-          setTimeType(prev => [...prev, matched.value as TimeTypeKey]);
-        }
-        showToast(`识别为：${matched.label}`);
+        showToast(`识别为：${matchedLabel}`);
       } else {
         showToast('无法确定分类，请手动选择', 'error');
       }

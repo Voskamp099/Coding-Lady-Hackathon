@@ -72,26 +72,17 @@ def _fmt_ts(m: Memory) -> str:
 
 
 def _format_memory_evidence(results: List[RetrievalResult]) -> str:
+    """精简版：每条记忆 1-2 行（日期+事件 + 行为标签），大幅减少 token。"""
     if not results:
         return "（未检索到相关记忆）"
-    lines = [f"## 相关记忆（共 {len(results)} 条，按相关性降序）\n"]
+    lines = [f"## 相关记忆（共 {len(results)} 条）\n"]
     for i, r in enumerate(results, 1):
         m = r.memory
-        behaviors_cn = ", ".join(f"{b}({behavior_cn(b)})" for b in (m.behaviors or [])) or "无"
-        emo_patterns_cn = ", ".join(f"{p}({emotion_pattern_cn(p)})" for p in (m.emotion_patterns or [])) or "无"
-        emo_explicit = ", ".join(m.emotion_explicit or []) or "无"
+        # 只取前 2 个行为标签，原文截断到 50 字，进一步压缩上下文
+        behaviors_cn = ", ".join(behavior_cn(b) for b in (m.behaviors or [])[:2]) or "无"
         lines.append(
-            f"[记忆{i}] 时间={_fmt_ts(m)} | 相关度={r.score:.3f} | 重要度={m.importance}/10 | 行为置信度={m.behavior_confidence:.2f}\n"
-            f"  事件: {m.event}\n"
-            f"  动作: {m.action or '无'}\n"
-            f"  原文: {m.raw_text}\n"
-            f"  人物: {', '.join(m.people) or '无'}\n"
-            f"  明确情绪: {emo_explicit}\n"
-            f"  行为信号: {behaviors_cn}\n"
-            f"  情绪模式: {emo_patterns_cn}\n"
-            f"  动机(推测): {m.motivation or '无'}\n"
-            f"  学习方式: {m.learning_style or '无'}\n"
-            f"  社交行为: {m.social_behavior or '无'}\n"
+            f"[{i}] {_fmt_ts(m)} | {m.event}\n"
+            f"  行为: {behaviors_cn} | 原文: {(m.raw_text or '')[:50]}"
         )
     return "\n".join(lines)
 
@@ -115,49 +106,47 @@ def _format_value_synthesis(analysis) -> str:
 
 
 def _format_profile(profile: dict) -> str:
+    """精简版全库画像：只保留一行高频行为。"""
     if not profile or profile.get("total", 0) == 0:
         return "（记忆库为空）"
-    lines = [f"## 全库画像（共 {profile['total']} 条记忆）\n"]
+    parts = [f"共{profile['total']}条记忆"]
     if profile.get("top_behaviors"):
-        bh = " / ".join(f"{b}({behavior_cn(b)})" for b in profile["top_behaviors"])
-        lines.append(f"高频行为: {bh}")
-    if profile.get("top_emotion_patterns"):
-        ep = " / ".join(f"{p}({emotion_pattern_cn(p)})" for p in profile["top_emotion_patterns"])
-        lines.append(f"高频情绪模式: {ep}")
+        bh = " / ".join(behavior_cn(b) for b in profile["top_behaviors"][:3])
+        parts.append(f"高频行为: {bh}")
     if profile.get("top_emotion_explicit"):
-        lines.append("高频基本情绪: " + " / ".join(profile["top_emotion_explicit"]))
-    if "importance_avg" in profile:
-        lines.append(f"平均重要度: {profile['importance_avg']:.2f}/10")
-    return "\n".join(lines)
+        parts.append("高频情绪: " + " / ".join(profile["top_emotion_explicit"][:3]))
+    return " | ".join(parts)
 
 
 def _format_clusters(clusters: List[MemoryCluster]) -> str:
     if not clusters:
-        return "（记忆数不足，未聚类）"
-    lines = [f"## 记忆聚类（共 {len(clusters)} 簇）\n"]
+        return ""
+    lines = [f"聚类: {len(clusters)} 簇"]
     for c in clusters:
-        bh = ", ".join(c.top_behaviors) or "无"
-        ep = ", ".join(c.top_emotion_patterns) or "无"
-        lines.append(
-            f"[簇{c.cluster_id}] {c.size}条 | 标签: {c.label}\n"
-            f"  高频行为: {bh} | 高频情绪模式: {ep} | 平均重要度: {c.importance_avg:.2f}/10"
-        )
+        bh = ", ".join(c.top_behaviors[:2]) or "无"
+        lines.append(f"  [{c.cluster_id}] {c.size}条 | {c.label} | {bh}")
     return "\n".join(lines)
 
 
 def _format_rag(query: str) -> str:
-    chunks = _kb.retrieve(query, k=3)
-    return KnowledgeBase.format_for_prompt(chunks)
+    """精简 RAG：只取 1 个最相关知识块，并截断正文，显著减少上下文 token。"""
+    chunks = _kb.retrieve(query, k=1)
+    if not chunks:
+        return "（未检索到相关理论依据）"
+    lines = ["# 相关心理学理论依据（RAG，供分析参考）\n"]
+    for c in chunks:
+        # 理论块含大表格时会很长，截断到 400 字足够 LLM 引用
+        content = (c.content or "")[:400]
+        lines.append(f"## {c.title}\n{content}\n")
+    return "\n".join(lines)
 
 
 def _build_evidence_block(results, analysis, index: VectorIndex, query: str) -> str:
+    """精简证据块：记忆证据 + 简要画像 + RAG（跳过 Layer3 和聚类以加速）。"""
     profile = index.global_profile()
-    clusters = index.classify(n_clusters=4) if len(index.memories) >= 6 else []
     return "\n\n".join([
         _format_memory_evidence(results),
-        _format_value_synthesis(analysis),
         _format_profile(profile),
-        _format_clusters(clusters),
         _format_rag(query),
     ])
 
@@ -192,16 +181,14 @@ class ChatAgent:
     async def chat(
         self,
         user_message: str,
-        k: int = 8,
+        k: int = 5,
         with_evidence: bool = True,
         child_name: Optional[str] = None,
     ) -> Dict:
         """
-        对话主入口。
-        child_name: 隔离标识。仅在 child_name 名下的记忆中被检索 / 价值综合。
+        对话主入口（精简版：跳过 Layer3 价值综合以减少 LLM 调用，加速响应）。
+        child_name: 隔离标识。仅在 child_name 名下的记忆中被检索。
         """
-        from backend.extraction_pipeline import run_layer3
-
         if count_memories(child_name=child_name) == 0:
             # 复合键 parentName::childName → 只取孩子名显示
             who = (child_name.split("::", 1)[1] if child_name and "::" in child_name else child_name) or "你"
@@ -217,22 +204,13 @@ class ChatAgent:
 
         index = get_index(child_name=child_name)
 
-        # 1. 检索
+        # 1. 检索 top-K 相关记忆（K=5，减少上下文长度）
         results: List[RetrievalResult] = index.search(user_message, k=k)
 
-        # 2. Layer3 价值综合（仅对检索到的记忆）
-        retrieved_mems = [r.memory for r in results]
-        try:
-            analysis = await run_layer3(
-                memories=retrieved_mems,
-                scope=f"chat:{user_message[:30]}",
-                query_hint=user_message,
-            )
-        except Exception as e:
-            print(f"[chat_agent] Layer3 失败，跳过: {e}")
-            analysis = None
+        # 2. 跳过 Layer3 价值综合（省一次 LLM 调用，大幅加速）
+        analysis = None
 
-        # 3. 组装证据
+        # 3. 组装证据（精简版：记忆证据 + 画像 + RAG）
         evidence_block = _build_evidence_block(results, analysis, index, user_message)
 
         # 4. 调 LLM
@@ -241,8 +219,10 @@ class ChatAgent:
         try:
             resp = await _chat_client.chat.completions.create(
                 model=cfg.model_name,
+                # 回答目标 300-500 字（约 700-900 token），上限收到 1200，
+                # 既够写完自然段落，又更快返回、更省钱（输出 token 也计费）
+                max_tokens=min(cfg.max_tokens, 1200),
                 messages=messages,
-                max_tokens=max(cfg.max_tokens, 4096),
                 temperature=cfg.temperature,
             )
             answer = resp.choices[0].message.content or ""
