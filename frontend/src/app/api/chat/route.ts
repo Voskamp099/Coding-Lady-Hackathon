@@ -36,14 +36,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Build the enriched message for the Python backend.
-    // We prepend context about the child name and perspective so the backend
-    // chat agent can tailor its response.
+    // 用隐式叙述而非"对话上下文"标签（避免 LLM 复读前缀）
+    const perspectiveNote = userRole === 'parent'
+      ? `家长视角：用第三人称谈论孩子「${childName}」`
+      : `孩子视角：用第二人称跟「${childName}」本人对话`;
     const enrichedMessage = [
-      `[对话上下文]`,
-      `孩子名字: ${childName}`,
-      `视角: ${userRole === 'parent' ? '家长视角(第三人称)' : '孩子视角(第二人称)'}`,
-      memoryContext ? `\n[前端提供的记忆摘要]\n${memoryContext.slice(0, 2000)}` : '',
-      `\n[用户问题]\n${lastUserMsg.content}`,
+      `（${perspectiveNote}）`,
+      memoryContext ? `\n以下是用户过往的真实成长记录，作为你回答的事实基础（不要复述格式）：\n${memoryContext.slice(0, 1500)}` : '',
+      `\n\n用户当前的问题：${lastUserMsg.content}`,
     ].filter(Boolean).join('\n');
 
     // Call Python backend chat agent
@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
         message: enrichedMessage,
         k: 10,
         with_evidence: false,
+        child_name: childName,  // 透传到后端做按名字的检索隔离
       }),
     });
 

@@ -169,6 +169,8 @@ body::before {
     radial-gradient(circle at 40% 40%, rgba(255, 248, 220, 0.05), transparent 55%);
   pointer-events: none;
   z-index: 0;
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 ::-webkit-scrollbar {
@@ -186,42 +188,46 @@ body::before {
   background: rgba(196, 163, 90, 0.3);
 }
 
-/* 晶莹玻璃效果 — 高透半透明 */
+/* 晶莹玻璃效果 — 高透半透明（blur 降至 12px/10px，Chrome 桌面端性能优化）*/
 .glass-warm {
   background: linear-gradient(135deg,
     rgba(255, 255, 255, 0.85),
     rgba(255, 248, 235, 0.65)
   );
-  backdrop-filter: blur(32px) saturate(1.2);
-  -webkit-backdrop-filter: blur(32px) saturate(1.2);
+  backdrop-filter: blur(12px) saturate(1.1);
+  -webkit-backdrop-filter: blur(12px) saturate(1.1);
   border: 1px solid rgba(212, 168, 67, 0.12);
+  transform: translateZ(0);
 }
 .glass-sage {
   background: linear-gradient(135deg,
     rgba(240, 248, 232, 0.68),
     rgba(252, 248, 235, 0.5)
   );
-  backdrop-filter: blur(24px) saturate(1.1);
-  -webkit-backdrop-filter: blur(24px) saturate(1.1);
+  backdrop-filter: blur(10px) saturate(1.05);
+  -webkit-backdrop-filter: blur(10px) saturate(1.05);
   border: 1px solid rgba(123, 158, 137, 0.18);
+  transform: translateZ(0);
 }
 .glass-sky {
   background: linear-gradient(135deg,
     rgba(255, 252, 242, 0.68),
     rgba(252, 248, 235, 0.5)
   );
-  backdrop-filter: blur(24px) saturate(1.1);
-  -webkit-backdrop-filter: blur(24px) saturate(1.1);
+  backdrop-filter: blur(10px) saturate(1.05);
+  -webkit-backdrop-filter: blur(10px) saturate(1.05);
   border: 1px solid rgba(212, 168, 67, 0.15);
+  transform: translateZ(0);
 }
 .glass-rose {
   background: linear-gradient(135deg,
     rgba(255, 250, 240, 0.68),
     rgba(252, 248, 235, 0.5)
   );
-  backdrop-filter: blur(24px) saturate(1.1);
-  -webkit-backdrop-filter: blur(24px) saturate(1.1);
+  backdrop-filter: blur(10px) saturate(1.05);
+  -webkit-backdrop-filter: blur(10px) saturate(1.05);
   border: 1px solid rgba(212, 168, 67, 0.15);
+  transform: translateZ(0);
 }
 
 /* 柔和金色光晕 — 晶莹透亮 */
@@ -352,7 +358,7 @@ body::before {
 .ghibli-cloud {
   position: absolute;
   border-radius: 50%;
-  filter: blur(50px);
+  filter: blur(30px);
   opacity: 0.35;
   pointer-events: none;
 }

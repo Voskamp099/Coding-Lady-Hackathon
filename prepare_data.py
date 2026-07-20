@@ -28,7 +28,7 @@ from backend.agent import agent
 from backend.memory_repository import memory_exists_by_raw_text, count_memories, clear_database
 
 
-async def ingest_data(csv_path: str, max_rows: int, run_layer3: bool):
+async def ingest_data(csv_path: str, max_rows: int, run_layer3: bool, child_name: str = "在的李生体"):
     if not os.path.exists(csv_path):
         print(f"❌ 找不到数据集: {csv_path}")
         return
@@ -66,7 +66,9 @@ async def ingest_data(csv_path: str, max_rows: int, run_layer3: bool):
                 memory = await agent.extract(
                     raw_text,
                     metadata={"source": "csv_import", "age_info": time_str,
-                              "dataset": get_settings().dataset_label},
+                              "dataset": get_settings().dataset_label,
+                              "child_name": child_name},
+                    child_name=child_name,
                 )
                 new_count += 1
                 print(f"    ✅ 新建: {memory.event}")
@@ -115,7 +117,7 @@ def main():
 
     csv_path = resolve_dataset_path()
     max_rows = args.max or get_settings().ingest_max_rows
-    asyncio.run(ingest_data(csv_path, max_rows, args.layer3))
+    asyncio.run(ingest_data(csv_path, max_rows, args.layer3, args.child))
 
 
 if __name__ == "__main__":

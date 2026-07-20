@@ -302,11 +302,197 @@ const LEAF_PALETTES = [
   { base: '#6A9A4A', light: '#A8D860', shadow: '#3A6A30' }, // 中绿
 ];
 
-// ─── 主组件 ─────────────────────────────────────────────────
+// ─── 植物绘制（茎 + 枝 + 叶），可离屏缓存 ──────────────────
+function drawPlant(ctx: CanvasRenderingContext2D, w: number, h: number, progress: number, t: number) {
+  const soilY = h * 0.72;
+  const stemH = h * (0.12 + progress * 0.22);  // 短壮主茎
+  const baseX = w / 2;
+  const sway = Math.sin(t * 0.4) * 0.6;
+
+  // 主茎 — 短壮，深褐色
+  const stemTop = soilY - stemH;
+  drawWatercolorBranch(
+    ctx,
+    baseX, soilY + 2,
+    baseX + sway * 0.3, stemTop,
+    w * 0.045, w * 0.022,
+    sway,
+    '#2D1E12', '#4A3520'
+  );
+
+  // 一级枝条（3-4根）— 在茎中上部开始分叉
+  const branchProg = Math.max(0, (progress - 0.12) / 0.88);
+  if (branchProg > 0) {
+    const bs = Math.min(branchProg * 1.4, 1); // branch scale
+    const forkY = stemTop + stemH * 0.15; // 分叉点
+
+    // 枝条1: 左侧
+    const b1EndX = baseX - w * 0.13 * bs;
+    const b1EndY = forkY - h * 0.12 * bs;
+    drawWatercolorBranch(ctx, baseX - 1, forkY, b1EndX, b1EndY, w * 0.028, w * 0.012, sway * 0.5, '#4A3520', '#6A4A3A');
+
+    // 枝条2: 左中
+    const b2EndX = baseX - w * 0.05 * bs;
+    const b2EndY = forkY - h * 0.16 * bs;
+    drawWatercolorBranch(ctx, baseX, forkY - 2, b2EndX, b2EndY, w * 0.025, w * 0.01, sway * 0.4, '#4A3520', '#5A4A30');
+
+    // 枝条3: 右中
+    const b3EndX = baseX + w * 0.06 * bs;
+    const b3EndY = forkY - h * 0.15 * bs;
+    drawWatercolorBranch(ctx, baseX + 1, forkY - 2, b3EndX, b3EndY, w * 0.025, w * 0.01, sway * 0.4, '#4A3520', '#5A4A30');
+
+    // 枝条4: 右侧
+    const b4EndX = baseX + w * 0.14 * bs;
+    const b4EndY = forkY - h * 0.13 * bs;
+    drawWatercolorBranch(ctx, baseX + 1, forkY, b4EndX, b4EndY, w * 0.028, w * 0.012, sway * 0.5, '#4A3520', '#6A4A3A');
+
+    // 二级枝条
+    if (branchProg > 0.35) {
+      const ss = Math.min((branchProg - 0.35) / 0.65, 1);
+
+      // 左侧二级
+      const s1EndX = b1EndX - w * 0.06 * ss;
+      const s1EndY = b1EndY - h * 0.08 * ss;
+      drawWatercolorBranch(ctx, b1EndX, b1EndY, s1EndX, s1EndY, w * 0.014, w * 0.006, sway * 0.3, '#5A3A2A', '#6A5A3A');
+
+      const s2EndX = b1EndX + w * 0.02 * ss;
+      const s2EndY = b1EndY - h * 0.06 * ss;
+      drawWatercolorBranch(ctx, b1EndX, b1EndY, s2EndX, s2EndY, w * 0.012, w * 0.005, sway * 0.3, '#5A3A2A', '#7A6A4A');
+
+      // 右侧二级
+      const s3EndX = b4EndX + w * 0.07 * ss;
+      const s3EndY = b4EndY - h * 0.07 * ss;
+      drawWatercolorBranch(ctx, b4EndX, b4EndY, s3EndX, s3EndY, w * 0.014, w * 0.006, sway * 0.3, '#5A3A2A', '#6A5A3A');
+
+      const s4EndX = b4EndX - w * 0.03 * ss;
+      const s4EndY = b4EndY - h * 0.05 * ss;
+      drawWatercolorBranch(ctx, b4EndX, b4EndY, s4EndX, s4EndY, w * 0.012, w * 0.005, sway * 0.3, '#5A3A2A', '#7A6A4A');
+
+      // 中部二级
+      const s5EndX = b2EndX - w * 0.03 * ss;
+      const s5EndY = b2EndY - h * 0.06 * ss;
+      drawWatercolorBranch(ctx, b2EndX, b2EndY, s5EndX, s5EndY, w * 0.012, w * 0.005, sway * 0.25, '#5A3A2A', '#7A6A4A');
+
+      const s6EndX = b3EndX + w * 0.03 * ss;
+      const s6EndY = b3EndY - h * 0.05 * ss;
+      drawWatercolorBranch(ctx, b3EndX, b3EndY, s6EndX, s6EndY, w * 0.012, w * 0.005, sway * 0.25, '#5A3A2A', '#7A6A4A');
+    }
+  }
+
+  // ── 叶片（30-40片，随进度展开）──
+  const leafProg = Math.max(0, (progress - 0.2) / 0.8);
+  if (leafProg > 0) {
+    const ls = Math.min(leafProg * 1.3, 1); // leaf scale
+    const baseLeaf = w * 0.05; // 基础叶片大小
+
+    // 定义所有叶片位置（相对于枝条结构）
+    const leaves: { x: number; y: number; angle: number; size: number; palette: number; threshold: number }[] = [];
+
+    // 主茎叶片
+    leaves.push({ x: baseX + 2, y: soilY - stemH * 0.4, angle: -0.3, size: baseLeaf * 0.9, palette: 0, threshold: 0.1 });
+    leaves.push({ x: baseX - 2, y: soilY - stemH * 0.5, angle: 0.4, size: baseLeaf * 0.85, palette: 1, threshold: 0.15 });
+    leaves.push({ x: baseX + 3, y: soilY - stemH * 0.65, angle: -0.5, size: baseLeaf * 0.8, palette: 2, threshold: 0.2 });
+
+    // 分叉处叶片
+    const forkY = (soilY - stemH) + stemH * 0.15;
+    leaves.push({ x: baseX + 1, y: forkY, angle: -0.2, size: baseLeaf * 0.85, palette: 3, threshold: 0.25 });
+    leaves.push({ x: baseX - 1, y: forkY + 3, angle: 0.3, size: baseLeaf * 0.8, palette: 4, threshold: 0.3 });
+    leaves.push({ x: baseX, y: forkY - 2, angle: 0.1, size: baseLeaf * 0.75, palette: 5, threshold: 0.35 });
+
+    // 一级枝条上的叶片（每根枝条3-4片）
+    const bs = Math.min(branchProg * 1.4, 1);
+    // 枝条1（左）
+    const b1x = baseX - w * 0.13 * bs;
+    const b1y = forkY - h * 0.12 * bs;
+    leaves.push({ x: b1x, y: b1y, angle: 0.5, size: baseLeaf * 0.9, palette: 0, threshold: 0.3 });
+    leaves.push({ x: b1x + 2, y: b1y + 4, angle: -0.2, size: baseLeaf * 0.75, palette: 1, threshold: 0.35 });
+    leaves.push({ x: b1x - 2, y: b1y + 2, angle: 0.3, size: baseLeaf * 0.7, palette: 2, threshold: 0.4 });
+    leaves.push({ x: b1x * 0.7 + baseX * 0.3, y: (b1y + forkY) / 2, angle: 0.6, size: baseLeaf * 0.7, palette: 3, threshold: 0.35 });
+
+    // 枝条2（左中）
+    const b2x = baseX - w * 0.05 * bs;
+    const b2y = forkY - h * 0.16 * bs;
+    leaves.push({ x: b2x, y: b2y, angle: 0.2, size: baseLeaf * 0.85, palette: 4, threshold: 0.3 });
+    leaves.push({ x: b2x - 2, y: b2y + 3, angle: -0.3, size: baseLeaf * 0.7, palette: 5, threshold: 0.35 });
+    leaves.push({ x: b2x + 1, y: b2y - 2, angle: 0.4, size: baseLeaf * 0.65, palette: 0, threshold: 0.4 });
+
+    // 枝条3（右中）
+    const b3x = baseX + w * 0.06 * bs;
+    const b3y = forkY - h * 0.15 * bs;
+    leaves.push({ x: b3x, y: b3y, angle: -0.2, size: baseLeaf * 0.85, palette: 1, threshold: 0.3 });
+    leaves.push({ x: b3x + 2, y: b3y + 3, angle: 0.3, size: baseLeaf * 0.7, palette: 2, threshold: 0.35 });
+    leaves.push({ x: b3x - 1, y: b3y - 2, angle: -0.4, size: baseLeaf * 0.65, palette: 3, threshold: 0.4 });
+
+    // 枝条4（右）
+    const b4x = baseX + w * 0.14 * bs;
+    const b4y = forkY - h * 0.13 * bs;
+    leaves.push({ x: b4x, y: b4y, angle: -0.5, size: baseLeaf * 0.9, palette: 4, threshold: 0.3 });
+    leaves.push({ x: b4x + 2, y: b4y + 4, angle: 0.2, size: baseLeaf * 0.75, palette: 5, threshold: 0.35 });
+    leaves.push({ x: b4x - 2, y: b4y + 2, angle: -0.3, size: baseLeaf * 0.7, palette: 0, threshold: 0.4 });
+    leaves.push({ x: b4x * 0.7 + baseX * 0.3, y: (b4y + forkY) / 2, angle: -0.6, size: baseLeaf * 0.7, palette: 1, threshold: 0.35 });
+
+    // 二级枝条末端叶片（仅当二级枝条出现时）
+    if (branchProg > 0.35) {
+      const ss2 = Math.min((branchProg - 0.35) / 0.65, 1);
+      // 左侧二级末端
+      const sl1x = b1x - w * 0.06 * ss2;
+      const sl1y = b1y - h * 0.08 * ss2;
+      leaves.push({ x: sl1x, y: sl1y, angle: 0.3, size: baseLeaf * 0.7, palette: 2, threshold: 0.45 });
+      leaves.push({ x: sl1x - 1, y: sl1y + 2, angle: -0.2, size: baseLeaf * 0.6, palette: 3, threshold: 0.5 });
+
+      const sl2x = b1x + w * 0.02 * ss2;
+      const sl2y = b1y - h * 0.06 * ss2;
+      leaves.push({ x: sl2x, y: sl2y, angle: 0.1, size: baseLeaf * 0.65, palette: 4, threshold: 0.5 });
+
+      // 右侧二级末端
+      const sr1x = b4x + w * 0.07 * ss2;
+      const sr1y = b4y - h * 0.07 * ss2;
+      leaves.push({ x: sr1x, y: sr1y, angle: -0.3, size: baseLeaf * 0.7, palette: 5, threshold: 0.45 });
+      leaves.push({ x: sr1x + 1, y: sr1y + 2, angle: 0.2, size: baseLeaf * 0.6, palette: 0, threshold: 0.5 });
+
+      const sr2x = b4x - w * 0.03 * ss2;
+      const sr2y = b4y - h * 0.05 * ss2;
+      leaves.push({ x: sr2x, y: sr2y, angle: -0.1, size: baseLeaf * 0.65, palette: 1, threshold: 0.5 });
+
+      // 中部二级末端
+      const sm1x = b2x - w * 0.03 * ss2;
+      const sm1y = b2y - h * 0.06 * ss2;
+      leaves.push({ x: sm1x, y: sm1y, angle: 0.2, size: baseLeaf * 0.65, palette: 2, threshold: 0.5 });
+
+      const sm2x = b3x + w * 0.03 * ss2;
+      const sm2y = b3y - h * 0.05 * ss2;
+      leaves.push({ x: sm2x, y: sm2y, angle: -0.2, size: baseLeaf * 0.65, palette: 3, threshold: 0.5 });
+    }
+
+    // 顶端嫩叶
+    leaves.push({ x: baseX, y: soilY - stemH - 2, angle: -0.05, size: baseLeaf * 0.7, palette: 4, threshold: 0.55 });
+    leaves.push({ x: baseX + 1, y: soilY - stemH, angle: 0.15, size: baseLeaf * 0.6, palette: 5, threshold: 0.6 });
+    leaves.push({ x: baseX - 1, y: soilY - stemH - 1, angle: 0.25, size: baseLeaf * 0.55, palette: 4, threshold: 0.65 });
+
+    // 绘制叶片
+    for (const leaf of leaves) {
+      if (leafProg < leaf.threshold) continue;
+      const leafScale = Math.min((leafProg - leaf.threshold) * 3 + 0.3, 1) * ls;
+      const palette = LEAF_PALETTES[leaf.palette];
+      const swayOffset = Math.sin(t * 0.5 + leaf.x * 0.08) * 0.03;
+      drawWatercolorLeaf(
+        ctx,
+        leaf.x, leaf.y,
+        leaf.angle,
+        leaf.size * leafScale,
+        palette.base,
+        palette.light,
+        palette.shadow,
+        swayOffset
+      );
+    }
+  }
+}
+
+// ─── 主组件（性能优化版：离屏缓存 + 帧率节流 + reduced-motion）──
 function ParticleAvatar({ growth = 0.5, size = 200, animate = true }: ParticleAvatarProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const frameRef = useRef<number>(0);
-  const timeRef = useRef<number>(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -314,7 +500,8 @@ function ParticleAvatar({ growth = 0.5, size = 200, animate = true }: ParticleAv
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // DPR 上限：小头像 1x，其他 1.5x（原来统一 2x 像素量减半）
+    const dpr = Math.min(window.devicePixelRatio || 1, size < 60 ? 1 : 1.5);
     const w = size;
     const h = size;
     canvas.width = w * dpr;
@@ -325,222 +512,71 @@ function ParticleAvatar({ growth = 0.5, size = 200, animate = true }: ParticleAv
 
     const progress = Math.min(growth, 1);
 
+    // 检测 reduced-motion 偏好；小头像（< 60px）也不需要动画
+    const prefersReducedMotion = typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const shouldAnimate = animate && !prefersReducedMotion && size >= 60;
+
+    // ── 离屏画布：静态层（背景 + 光晕 + 土壤 + 植物）只渲染一次 ──
+    // 原来每帧重绘 ~250 次 canvas 操作，现在改为 1 次 drawImage + ~22 次动态绘制
+    const staticCanvas = document.createElement('canvas');
+    staticCanvas.width = w * dpr;
+    staticCanvas.height = h * dpr;
+    const sCtx = staticCanvas.getContext('2d');
+    if (!sCtx) return;
+    sCtx.scale(dpr, dpr);
+
+    // 柔光背景（仅大尺寸时显示）
+    if (size >= 120) {
+      drawBokehBackground(sCtx, w, h);
+    }
+
+    // 金色光晕
+    const glowGrad = sCtx.createRadialGradient(w / 2, h * 0.45, 0, w / 2, h * 0.45, w * 0.45);
+    glowGrad.addColorStop(0, `rgba(255,240,200,${0.06 + progress * 0.04})`);
+    glowGrad.addColorStop(1, 'rgba(255,240,200,0)');
+    sCtx.fillStyle = glowGrad;
+    sCtx.fillRect(0, 0, w, h);
+
+    // 土壤（完全静态）
+    drawWatercolorSoil(sCtx, w, h);
+
+    // 植物：茎 + 枝 + 叶（静态渲染，t=0）
+    drawPlant(sCtx, w, h, progress, 0);
+
+    // ── 渲染循环（仅动态元素：粒子 + 草叶）──
+    let lastTime = 0;
+    const targetFPS = 20; // 水彩动画很柔和，20fps 足够流畅（原 60fps → CPU 降 66%）
+    const frameInterval = 1000 / targetFPS;
+
     const render = (time: number) => {
-      timeRef.current = time * 0.001;
-      const t = animate ? timeRef.current : 0;
+      if (shouldAnimate && time - lastTime < frameInterval) {
+        frameRef.current = requestAnimationFrame(render);
+        return;
+      }
+      lastTime = time;
+      const t = shouldAnimate ? time * 0.001 : 0;
 
       ctx.clearRect(0, 0, w, h);
 
-      // 柔光背景（仅大尺寸时显示）
-      if (size >= 120) {
-        drawBokehBackground(ctx, w, h);
-      }
+      // 1 次 drawImage 替代原来每帧 ~200 次静态绘制
+      ctx.drawImage(staticCanvas, 0, 0, w, h);
 
-      // 金色光晕
-      const glowGrad = ctx.createRadialGradient(w / 2, h * 0.45, 0, w / 2, h * 0.45, w * 0.45);
-      glowGrad.addColorStop(0, `rgba(255,240,200,${0.06 + progress * 0.04})`);
-      glowGrad.addColorStop(1, 'rgba(255,240,200,0)');
-      ctx.fillStyle = glowGrad;
-      ctx.fillRect(0, 0, w, h);
-
-      // 魔法光粒子
+      // 动态元素：魔法光粒子 + 草叶（约 22 次绘制操作）
       drawMagicParticles(ctx, w, h, t, progress);
-
-      // 土壤（完全静态）
-      drawWatercolorSoil(ctx, w, h);
-
-      // 草叶
       drawGrass(ctx, w, h, t);
 
-      // ── 树苗绘制 ──
-      const soilY = h * 0.72;
-      const stemH = h * (0.12 + progress * 0.22);  // 短壮主茎
-      const baseX = w / 2;
-      const sway = Math.sin(t * 0.4) * 0.6;
-
-      // 主茎 — 短壮，深褐色
-      const stemTop = soilY - stemH;
-      drawWatercolorBranch(
-        ctx,
-        baseX, soilY + 2,
-        baseX + sway * 0.3, stemTop,
-        w * 0.045, w * 0.022,
-        sway,
-        '#2D1E12', '#4A3520'
-      );
-
-      // 一级枝条（3-4根）— 在茎中上部开始分叉
-      const branchProg = Math.max(0, (progress - 0.12) / 0.88);
-      if (branchProg > 0) {
-        const bs = Math.min(branchProg * 1.4, 1); // branch scale
-        const forkY = stemTop + stemH * 0.15; // 分叉点
-
-        // 枝条1: 左侧
-        const b1EndX = baseX - w * 0.13 * bs;
-        const b1EndY = forkY - h * 0.12 * bs;
-        drawWatercolorBranch(ctx, baseX - 1, forkY, b1EndX, b1EndY, w * 0.028, w * 0.012, sway * 0.5, '#4A3520', '#6A4A3A');
-
-        // 枝条2: 左中
-        const b2EndX = baseX - w * 0.05 * bs;
-        const b2EndY = forkY - h * 0.16 * bs;
-        drawWatercolorBranch(ctx, baseX, forkY - 2, b2EndX, b2EndY, w * 0.025, w * 0.01, sway * 0.4, '#4A3520', '#5A4A30');
-
-        // 枝条3: 右中
-        const b3EndX = baseX + w * 0.06 * bs;
-        const b3EndY = forkY - h * 0.15 * bs;
-        drawWatercolorBranch(ctx, baseX + 1, forkY - 2, b3EndX, b3EndY, w * 0.025, w * 0.01, sway * 0.4, '#4A3520', '#5A4A30');
-
-        // 枝条4: 右侧
-        const b4EndX = baseX + w * 0.14 * bs;
-        const b4EndY = forkY - h * 0.13 * bs;
-        drawWatercolorBranch(ctx, baseX + 1, forkY, b4EndX, b4EndY, w * 0.028, w * 0.012, sway * 0.5, '#4A3520', '#6A4A3A');
-
-        // 二级枝条
-        if (branchProg > 0.35) {
-          const ss = Math.min((branchProg - 0.35) / 0.65, 1);
-
-          // 左侧二级
-          const s1EndX = b1EndX - w * 0.06 * ss;
-          const s1EndY = b1EndY - h * 0.08 * ss;
-          drawWatercolorBranch(ctx, b1EndX, b1EndY, s1EndX, s1EndY, w * 0.014, w * 0.006, sway * 0.3, '#5A3A2A', '#6A5A3A');
-
-          const s2EndX = b1EndX + w * 0.02 * ss;
-          const s2EndY = b1EndY - h * 0.06 * ss;
-          drawWatercolorBranch(ctx, b1EndX, b1EndY, s2EndX, s2EndY, w * 0.012, w * 0.005, sway * 0.3, '#5A3A2A', '#7A6A4A');
-
-          // 右侧二级
-          const s3EndX = b4EndX + w * 0.07 * ss;
-          const s3EndY = b4EndY - h * 0.07 * ss;
-          drawWatercolorBranch(ctx, b4EndX, b4EndY, s3EndX, s3EndY, w * 0.014, w * 0.006, sway * 0.3, '#5A3A2A', '#6A5A3A');
-
-          const s4EndX = b4EndX - w * 0.03 * ss;
-          const s4EndY = b4EndY - h * 0.05 * ss;
-          drawWatercolorBranch(ctx, b4EndX, b4EndY, s4EndX, s4EndY, w * 0.012, w * 0.005, sway * 0.3, '#5A3A2A', '#7A6A4A');
-
-          // 中部二级
-          const s5EndX = b2EndX - w * 0.03 * ss;
-          const s5EndY = b2EndY - h * 0.06 * ss;
-          drawWatercolorBranch(ctx, b2EndX, b2EndY, s5EndX, s5EndY, w * 0.012, w * 0.005, sway * 0.25, '#5A3A2A', '#7A6A4A');
-
-          const s6EndX = b3EndX + w * 0.03 * ss;
-          const s6EndY = b3EndY - h * 0.05 * ss;
-          drawWatercolorBranch(ctx, b3EndX, b3EndY, s6EndX, s6EndY, w * 0.012, w * 0.005, sway * 0.25, '#5A3A2A', '#7A6A4A');
-        }
-      }
-
-      // ── 叶片（30-40片，随进度展开）──
-      const leafProg = Math.max(0, (progress - 0.2) / 0.8);
-      if (leafProg > 0) {
-        const ls = Math.min(leafProg * 1.3, 1); // leaf scale
-        const baseLeaf = w * 0.05; // 基础叶片大小
-
-        // 定义所有叶片位置（相对于枝条结构）
-        const leaves: { x: number; y: number; angle: number; size: number; palette: number; threshold: number }[] = [];
-
-        // 主茎叶片
-        leaves.push({ x: baseX + 2, y: soilY - stemH * 0.4, angle: -0.3, size: baseLeaf * 0.9, palette: 0, threshold: 0.1 });
-        leaves.push({ x: baseX - 2, y: soilY - stemH * 0.5, angle: 0.4, size: baseLeaf * 0.85, palette: 1, threshold: 0.15 });
-        leaves.push({ x: baseX + 3, y: soilY - stemH * 0.65, angle: -0.5, size: baseLeaf * 0.8, palette: 2, threshold: 0.2 });
-
-        // 分叉处叶片
-        const forkY = (soilY - stemH) + stemH * 0.15;
-        leaves.push({ x: baseX + 1, y: forkY, angle: -0.2, size: baseLeaf * 0.85, palette: 3, threshold: 0.25 });
-        leaves.push({ x: baseX - 1, y: forkY + 3, angle: 0.3, size: baseLeaf * 0.8, palette: 4, threshold: 0.3 });
-        leaves.push({ x: baseX, y: forkY - 2, angle: 0.1, size: baseLeaf * 0.75, palette: 5, threshold: 0.35 });
-
-        // 一级枝条上的叶片（每根枝条3-4片）
-        const bs = Math.min(branchProg * 1.4, 1);
-        // 枝条1（左）
-        const b1x = baseX - w * 0.13 * bs;
-        const b1y = forkY - h * 0.12 * bs;
-        leaves.push({ x: b1x, y: b1y, angle: 0.5, size: baseLeaf * 0.9, palette: 0, threshold: 0.3 });
-        leaves.push({ x: b1x + 2, y: b1y + 4, angle: -0.2, size: baseLeaf * 0.75, palette: 1, threshold: 0.35 });
-        leaves.push({ x: b1x - 2, y: b1y + 2, angle: 0.3, size: baseLeaf * 0.7, palette: 2, threshold: 0.4 });
-        leaves.push({ x: b1x * 0.7 + baseX * 0.3, y: (b1y + forkY) / 2, angle: 0.6, size: baseLeaf * 0.7, palette: 3, threshold: 0.35 });
-
-        // 枝条2（左中）
-        const b2x = baseX - w * 0.05 * bs;
-        const b2y = forkY - h * 0.16 * bs;
-        leaves.push({ x: b2x, y: b2y, angle: 0.2, size: baseLeaf * 0.85, palette: 4, threshold: 0.3 });
-        leaves.push({ x: b2x - 2, y: b2y + 3, angle: -0.3, size: baseLeaf * 0.7, palette: 5, threshold: 0.35 });
-        leaves.push({ x: b2x + 1, y: b2y - 2, angle: 0.4, size: baseLeaf * 0.65, palette: 0, threshold: 0.4 });
-
-        // 枝条3（右中）
-        const b3x = baseX + w * 0.06 * bs;
-        const b3y = forkY - h * 0.15 * bs;
-        leaves.push({ x: b3x, y: b3y, angle: -0.2, size: baseLeaf * 0.85, palette: 1, threshold: 0.3 });
-        leaves.push({ x: b3x + 2, y: b3y + 3, angle: 0.3, size: baseLeaf * 0.7, palette: 2, threshold: 0.35 });
-        leaves.push({ x: b3x - 1, y: b3y - 2, angle: -0.4, size: baseLeaf * 0.65, palette: 3, threshold: 0.4 });
-
-        // 枝条4（右）
-        const b4x = baseX + w * 0.14 * bs;
-        const b4y = forkY - h * 0.13 * bs;
-        leaves.push({ x: b4x, y: b4y, angle: -0.5, size: baseLeaf * 0.9, palette: 4, threshold: 0.3 });
-        leaves.push({ x: b4x + 2, y: b4y + 4, angle: 0.2, size: baseLeaf * 0.75, palette: 5, threshold: 0.35 });
-        leaves.push({ x: b4x - 2, y: b4y + 2, angle: -0.3, size: baseLeaf * 0.7, palette: 0, threshold: 0.4 });
-        leaves.push({ x: b4x * 0.7 + baseX * 0.3, y: (b4y + forkY) / 2, angle: -0.6, size: baseLeaf * 0.7, palette: 1, threshold: 0.35 });
-
-        // 二级枝条末端叶片（仅当二级枝条出现时）
-        if (branchProg > 0.35) {
-          const ss2 = Math.min((branchProg - 0.35) / 0.65, 1);
-          // 左侧二级末端
-          const sl1x = b1x - w * 0.06 * ss2;
-          const sl1y = b1y - h * 0.08 * ss2;
-          leaves.push({ x: sl1x, y: sl1y, angle: 0.3, size: baseLeaf * 0.7, palette: 2, threshold: 0.45 });
-          leaves.push({ x: sl1x - 1, y: sl1y + 2, angle: -0.2, size: baseLeaf * 0.6, palette: 3, threshold: 0.5 });
-
-          const sl2x = b1x + w * 0.02 * ss2;
-          const sl2y = b1y - h * 0.06 * ss2;
-          leaves.push({ x: sl2x, y: sl2y, angle: 0.1, size: baseLeaf * 0.65, palette: 4, threshold: 0.5 });
-
-          // 右侧二级末端
-          const sr1x = b4x + w * 0.07 * ss2;
-          const sr1y = b4y - h * 0.07 * ss2;
-          leaves.push({ x: sr1x, y: sr1y, angle: -0.3, size: baseLeaf * 0.7, palette: 5, threshold: 0.45 });
-          leaves.push({ x: sr1x + 1, y: sr1y + 2, angle: 0.2, size: baseLeaf * 0.6, palette: 0, threshold: 0.5 });
-
-          const sr2x = b4x - w * 0.03 * ss2;
-          const sr2y = b4y - h * 0.05 * ss2;
-          leaves.push({ x: sr2x, y: sr2y, angle: -0.1, size: baseLeaf * 0.65, palette: 1, threshold: 0.5 });
-
-          // 中部二级末端
-          const sm1x = b2x - w * 0.03 * ss2;
-          const sm1y = b2y - h * 0.06 * ss2;
-          leaves.push({ x: sm1x, y: sm1y, angle: 0.2, size: baseLeaf * 0.65, palette: 2, threshold: 0.5 });
-
-          const sm2x = b3x + w * 0.03 * ss2;
-          const sm2y = b3y - h * 0.05 * ss2;
-          leaves.push({ x: sm2x, y: sm2y, angle: -0.2, size: baseLeaf * 0.65, palette: 3, threshold: 0.5 });
-        }
-
-        // 顶端嫩叶
-        leaves.push({ x: baseX, y: soilY - stemH - 2, angle: -0.05, size: baseLeaf * 0.7, palette: 4, threshold: 0.55 });
-        leaves.push({ x: baseX + 1, y: soilY - stemH, angle: 0.15, size: baseLeaf * 0.6, palette: 5, threshold: 0.6 });
-        leaves.push({ x: baseX - 1, y: soilY - stemH - 1, angle: 0.25, size: baseLeaf * 0.55, palette: 4, threshold: 0.65 });
-
-        // 绘制叶片
-        for (const leaf of leaves) {
-          if (leafProg < leaf.threshold) continue;
-          const leafScale = Math.min((leafProg - leaf.threshold) * 3 + 0.3, 1) * ls;
-          const palette = LEAF_PALETTES[leaf.palette];
-          const swayOffset = Math.sin(t * 0.5 + leaf.x * 0.08) * 0.03;
-          drawWatercolorLeaf(
-            ctx,
-            leaf.x, leaf.y,
-            leaf.angle,
-            leaf.size * leafScale,
-            palette.base,
-            palette.light,
-            palette.shadow,
-            swayOffset
-          );
-        }
-      }
+      if (!shouldAnimate) return; // 静态帧，不启动循环
 
       frameRef.current = requestAnimationFrame(render);
     };
 
-    frameRef.current = requestAnimationFrame(render);
+    if (shouldAnimate) {
+      frameRef.current = requestAnimationFrame(render);
+    } else {
+      render(0); // 渲染一帧静态画面
+    }
+
     return () => cancelAnimationFrame(frameRef.current);
   }, [growth, size, animate]);
 

@@ -40,20 +40,27 @@ _chat_client = AsyncOpenAI(
 )
 
 _index: Optional[VectorIndex] = None
+_index_for_child: Optional[str] = None  # 记录当前 _index 对应的 child_name，便于失效判断
 _kb = KnowledgeBase.get()
 
 
-def get_index() -> VectorIndex:
-    global _index
-    if _index is None:
-        _index = VectorIndex()
+def get_index(child_name: Optional[str] = None) -> VectorIndex:
+    """
+    按 child_name 缓存的向量索引。
+    child_name 变化时重建。None 表示"全库"模式。
+    """
+    global _index, _index_for_child
+    if _index is None or _index_for_child != child_name:
+        _index = VectorIndex(child_name=child_name)
+        _index_for_child = child_name
     return _index
 
 
 def reset_index() -> None:
     """清掉缓存的索引（新增记忆后调用）。"""
-    global _index
+    global _index, _index_for_child
     _index = None
+    _index_for_child = None
 
 
 # ============================================================
@@ -182,18 +189,32 @@ def _fallback_answer(user_message: str, analysis) -> str:
 class ChatAgent:
     """对话 Agent：基于分层记忆 + 本体 + RAG + Layer3 价值综合做决策分析。"""
 
-    async def chat(self, user_message: str, k: int = 8, with_evidence: bool = True) -> Dict:
+    async def chat(
+        self,
+        user_message: str,
+        k: int = 8,
+        with_evidence: bool = True,
+        child_name: Optional[str] = None,
+    ) -> Dict:
+        """
+        对话主入口。
+        child_name: 隔离标识。仅在 child_name 名下的记忆中被检索 / 价值综合。
+        """
         from backend.extraction_pipeline import run_layer3
 
-        if count_memories() == 0:
+        if count_memories(child_name=child_name) == 0:
+            who = child_name or "你"
             return {
-                "answer": "记忆库还是空的。请先运行 `python prepare_data.py --clear --layer3` 导入成长记录，我才能基于你的过往给你建议。",
+                "answer": (
+                    f"我还没有「{who}」的成长记忆呢。请先在「投喂」或对话里录入一些"
+                    f"关于「{who}」的生活事件，我才能基于过往给你有温度的建议。"
+                ),
                 "retrieved_memories": [],
                 "evidence": None,
                 "stats": {"total_memories": 0, "retrieved": 0},
             }
 
-        index = get_index()
+        index = get_index(child_name=child_name)
 
         # 1. 检索
         results: List[RetrievalResult] = index.search(user_message, k=k)

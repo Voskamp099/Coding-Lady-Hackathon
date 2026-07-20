@@ -77,9 +77,17 @@ class VectorIndex:
         clusters = idx.classify(n_clusters=4)
     """
 
-    def __init__(self, embedder: Optional[Embedder] = None, memories: Optional[List[Memory]] = None):
+    def __init__(self, embedder: Optional[Embedder] = None, memories: Optional[List[Memory]] = None, child_name: Optional[str] = None):
+        """
+        记忆索引。
+        child_name: 传入时仅加载该名字下的记忆；不传则加载全部。
+        """
+        self.child_name = child_name
         self.embedder = embedder or get_embedder()
-        self.memories: List[Memory] = memories if memories is not None else get_all_memories()
+        if memories is not None:
+            self.memories: List[Memory] = memories
+        else:
+            self.memories = get_all_memories(child_name=child_name)
         self.texts: List[str] = []
         self.vectors: Optional[np.ndarray] = None  # shape=(n, dim)
         self._unit: Optional[np.ndarray] = None     # 归一化后的向量，用于余弦相似
@@ -88,7 +96,7 @@ class VectorIndex:
     # ---------- 索引构建 ----------
     def rebuild(self) -> "VectorIndex":
         """重新拉取记忆并构建向量索引。"""
-        self.memories = get_all_memories()
+        self.memories = get_all_memories(child_name=self.child_name)
         self.texts = [_build_searchable_text(m) for m in self.memories]
 
         if not self.memories:

@@ -46,6 +46,7 @@ def init_db():
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS memories (
         id TEXT PRIMARY KEY,
+        child_name TEXT,
         timestamp TEXT,
         event TEXT,
         raw_text TEXT,
@@ -68,6 +69,7 @@ def init_db():
     cursor.execute("PRAGMA table_info(memories)")
     existing_cols = {row[1] for row in cursor.fetchall()}
     migrations = {
+        "child_name": "ALTER TABLE memories ADD COLUMN child_name TEXT",
         "action": "ALTER TABLE memories ADD COLUMN action TEXT",
         "emotion_explicit": "ALTER TABLE memories ADD COLUMN emotion_explicit TEXT",
         "behaviors": "ALTER TABLE memories ADD COLUMN behaviors TEXT",
@@ -85,6 +87,11 @@ def init_db():
                 cursor.execute(ddl)
             except sqlite3.OperationalError:
                 pass  # 列已存在等情况，忽略
+
+    # 1c. child_name 索引（按名字隔离的快速过滤）
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_memories_child_name ON memories(child_name)"
+    )
 
     # 2. value_analyses 表（Layer3 聚合结果）
     cursor.execute("""
