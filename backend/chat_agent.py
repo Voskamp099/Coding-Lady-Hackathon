@@ -24,8 +24,13 @@ from backend.knowledge_base import KnowledgeBase
 from backend.memory_repository import count_memories
 from backend.models import Memory
 from backend.ontology import (
-    VALUES, BEHAVIORS, EMOTION_PATTERNS,
-    VALUE_GROUPS, value_cn, behavior_cn, emotion_pattern_cn,
+    VALUES,
+    BEHAVIORS,
+    EMOTION_PATTERNS,
+    VALUE_GROUPS,
+    value_cn,
+    behavior_cn,
+    emotion_pattern_cn,
 )
 from backend.prompt import build_chat_messages
 from backend.vector_store import VectorIndex, RetrievalResult, MemoryCluster
@@ -40,7 +45,9 @@ _chat_client = AsyncOpenAI(
 )
 
 _index: Optional[VectorIndex] = None
-_index_for_child: Optional[str] = None  # 记录当前 _index 对应的 child_name，便于失效判断
+_index_for_child: Optional[str] = (
+    None  # 记录当前 _index 对应的 child_name，便于失效判断
+)
 _kb = KnowledgeBase.get()
 
 
@@ -79,7 +86,9 @@ def _format_memory_evidence(results: List[RetrievalResult]) -> str:
     for i, r in enumerate(results, 1):
         m = r.memory
         # 只取前 2 个行为标签，原文截断到 50 字，进一步压缩上下文
-        behaviors_cn = ", ".join(behavior_cn(b) for b in (m.behaviors or [])[:2]) or "无"
+        behaviors_cn = (
+            ", ".join(behavior_cn(b) for b in (m.behaviors or [])[:2]) or "无"
+        )
         lines.append(
             f"[{i}] {_fmt_ts(m)} | {m.event}\n"
             f"  行为: {behaviors_cn} | 原文: {(m.raw_text or '')[:50]}"
@@ -99,7 +108,9 @@ def _format_value_synthesis(analysis) -> str:
         sorted_vals = sorted(analysis.values, key=lambda v: v.confidence, reverse=True)
         for v in sorted_vals:
             ev = " | ".join(v.evidence[:2]) if v.evidence else "无"
-            lines.append(f"- {v.value}({value_cn(v.value)}) conf={v.confidence:.2f} | 证据: {ev}")
+            lines.append(
+                f"- {v.value}({value_cn(v.value)}) conf={v.confidence:.2f} | 证据: {ev}"
+            )
     if analysis.trend:
         lines.append(f"\n趋势: {analysis.trend}")
     return "\n".join(lines)
@@ -144,11 +155,13 @@ def _format_rag(query: str) -> str:
 def _build_evidence_block(results, analysis, index: VectorIndex, query: str) -> str:
     """精简证据块：记忆证据 + 简要画像 + RAG（跳过 Layer3 和聚类以加速）。"""
     profile = index.global_profile()
-    return "\n\n".join([
-        _format_memory_evidence(results),
-        _format_profile(profile),
-        _format_rag(query),
-    ])
+    return "\n\n".join(
+        [
+            _format_memory_evidence(results),
+            _format_profile(profile),
+            _format_rag(query),
+        ]
+    )
 
 
 # ============================================================
@@ -184,14 +197,20 @@ class ChatAgent:
         k: int = 5,
         with_evidence: bool = True,
         child_name: Optional[str] = None,
+        user_role: Optional[str] = None,
     ) -> Dict:
         """
         对话主入口（精简版：跳过 Layer3 价值综合以减少 LLM 调用，加速响应）。
         child_name: 隔离标识。仅在 child_name 名下的记忆中被检索。
+        user_role: 对话视角。parent=家长视角(第三人称谈论孩子) / child=孩子视角(第二人称跟孩子本人对话)。
         """
         if count_memories(child_name=child_name) == 0:
             # 复合键 parentName::childName → 只取孩子名显示
-            who = (child_name.split("::", 1)[1] if child_name and "::" in child_name else child_name) or "你"
+            who = (
+                child_name.split("::", 1)[1]
+                if child_name and "::" in child_name
+                else child_name
+            ) or "你"
             return {
                 "answer": (
                     f"我还没有「{who}」的成长记忆呢。请先在「投喂」或对话里录入一些"
@@ -213,8 +232,10 @@ class ChatAgent:
         # 3. 组装证据（精简版：记忆证据 + 画像 + RAG）
         evidence_block = _build_evidence_block(results, analysis, index, user_message)
 
-        # 4. 调 LLM
-        messages = build_chat_messages(user_message, evidence_block)
+        # 4. 调 LLM（注入视角信息到 system prompt）
+        messages = build_chat_messages(
+            user_message, evidence_block, user_role=user_role
+        )
         answer = ""
         try:
             resp = await _chat_client.chat.completions.create(
@@ -248,12 +269,18 @@ class ChatAgent:
             ],
             "value_synthesis": {
                 "values": [
-                    {"value": v.value, "cn": value_cn(v.value),
-                     "confidence": v.confidence, "evidence": v.evidence}
+                    {
+                        "value": v.value,
+                        "cn": value_cn(v.value),
+                        "confidence": v.confidence,
+                        "evidence": v.evidence,
+                    }
                     for v in (analysis.values if analysis else [])
                 ],
                 "trend": analysis.trend if analysis else "",
-            } if analysis else None,
+            }
+            if analysis
+            else None,
             "evidence": evidence_block if with_evidence else None,
             "stats": {
                 "total_memories": len(index.memories),

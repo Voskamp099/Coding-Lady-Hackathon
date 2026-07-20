@@ -106,8 +106,8 @@ export default function ChatPage() {
   }, [messages, streaming, user, perspective]);
 
   const suggestions = perspective === 'parent'
-    ? ['小宝今天有什么特别的事吗？', '说说小宝的性格特点', '小宝最近在成长什么方面？']
-    : ['我真正擅长什么？', '我小时候是什么样的人？', '我为什么会有这样的反应？'];
+    ? ['孩子遇到困难容易放弃吗？', '他对什么事情最专注？', '孩子的人际关系怎么样？']
+    : ['我遇到困难会放弃吗？', '我对什么事情最专注？', '我和别人相处怎么样？'];
 
   const avatarLabel = perspective === 'parent'
     ? `${user?.childName || '宝宝'}的孪生体 · 家长视角`

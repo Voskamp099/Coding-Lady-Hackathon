@@ -40,15 +40,8 @@ export async function POST(request: NextRequest) {
       ? childName.split('::', 1)[1]
       : childName;
 
-    // Build the enriched message for the Python backend.
-    // 不再发前端 memoryContext — 后端自己做 RAG 检索，避免双份上下文浪费 token
-    const perspectiveNote = userRole === 'parent'
-      ? `家长视角：用第三人称谈论孩子「${displayChildName}」`
-      : `孩子视角：用第二人称跟「${displayChildName}」本人对话`;
-    const enrichedMessage = [
-      `（${perspectiveNote}）`,
-      `\n\n用户当前的问题：${lastUserMsg.content}`,
-    ].filter(Boolean).join('\n');
+    // 用户问题直接传给后端，视角信息通过 user_role 独立字段传递（后端注入 system prompt）
+    const enrichedMessage = lastUserMsg.content;
 
     // Call Python backend chat agent (k=5, 精简检索)
     const backendRes = await fetch(`${BACKEND_URL}/api/chat`, {
@@ -59,6 +52,7 @@ export async function POST(request: NextRequest) {
         k: 5,
         with_evidence: false,
         child_name: childName,  // 透传到后端做按名字的检索隔离
+        user_role: userRole,   // 透传视角到后端，注入 system prompt
       }),
     });
 
