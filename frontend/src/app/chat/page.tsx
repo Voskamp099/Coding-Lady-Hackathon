@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { BottomNav } from '@/components/bottom-nav';
 import { ParticleAvatar } from '@/components/particle-avatar';
-import { getUser, getMemories, CHILDREN_FIVE_TIMES, syncMemoriesFromBackend } from '@/lib/store';
+import { getUser, getMemories, CHILDREN_FIVE_TIMES, syncMemoriesFromBackend, getCurrentIdentity } from '@/lib/store';
 import { Markdown } from '@/components/markdown';
 import { LoadingQuotes } from '@/components/loading-quotes';
 
@@ -69,7 +69,7 @@ export default function ChatPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content })),
-          childName: user?.childName || '宝宝',
+          childName: getCurrentIdentity() || '宝宝',
           memoryContext: buildMemoryContext(),
           userRole: perspective,
         }),

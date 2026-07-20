@@ -107,15 +107,14 @@ class ClearRequest(BaseModel):
 
 @router.post("/memories/clear")
 async def memories_clear(request: ClearRequest = None):
-    """清空数据库。传 child_name 则只清该名字下的记忆，不影响其他人。"""
+    """清空数据库。必须传 child_name，只清该名字下的记忆，绝不全局清空。"""
     from backend.chat_agent import reset_index
-    if request and request.child_name:
-        count = clear_memories_for_child(request.child_name)
-        reset_index()
-        return {"success": True, "cleared": {"memories": count}, "scope": "child", "child_name": request.child_name}
-    report = clear_database()
+    if not request or not request.child_name:
+        # 安全措施：不传 child_name 时拒绝操作，绝不全局清空
+        return {"success": False, "error": "必须指定 child_name 才能清空，不允许全局清空"}
+    count = clear_memories_for_child(request.child_name)
     reset_index()
-    return {"success": True, "cleared": report, "scope": "all"}
+    return {"success": True, "cleared": {"memories": count}, "scope": "child", "child_name": request.child_name}
 
 
 @router.get("/memories/test")
@@ -182,6 +181,15 @@ def _map_demo_record(r: dict) -> Memory:
     )
 
 
+def _display_name(child_name: Optional[str]) -> str:
+    """复合键 parentName::childName → 只取孩子名用于显示。"""
+    if not child_name:
+        return ""
+    if "::" in child_name:
+        return child_name.split("::", 1)[1]
+    return child_name
+
+
 class ImportDemoRequest(BaseModel):
     records: List[Dict[str, Any]] = Field(..., description="演示数据记录数组")
     clear_first: bool = Field(default=True, description="导入前是否清空该名字下的旧数据")
@@ -215,7 +223,7 @@ async def import_demo(request: ImportDemoRequest):
         "skipped": skip_count,
         "total": count_memories(child_name=child_name),
         "child_name": child_name,
-        "message": f"已为「{child_name}」导入 {new_count} 条演示数据（跳过 {skip_count} 条重复），当前共 {count_memories(child_name=child_name)} 条",
+        "message": f"已为「{_display_name(child_name)}」导入 {new_count} 条演示数据（跳过 {skip_count} 条重复），当前共 {count_memories(child_name=child_name)} 条",
     }
 
 
@@ -281,7 +289,7 @@ async def import_batch(request: ImportBatchRequest):
             skip_count += 1
 
     total = count_memories(child_name=child_name) if child_name else count_memories()
-    name_label = f"「{child_name}」" if child_name else ""
+    name_label = f"「{_display_name(child_name)}」" if child_name else ""
     return {
         "success": True,
         "imported": new_count,

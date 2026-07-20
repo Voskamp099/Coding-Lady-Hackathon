@@ -10,6 +10,7 @@ import {
   UserProfile, TimeTypeKey,
   getChildAgeString, getDigitalTwinProgress, getRecentMemories,
   syncMemoriesFromBackend, syncMemoryToBackend, clearAllData,
+  getCurrentIdentity, logoutUser,
 } from '@/lib/store';
 import { parseExcelFile, downloadTemplate, parsedRowsToMemories } from '@/lib/excel-utils';
 
@@ -43,6 +44,7 @@ export default function FeedPage() {
   const [clearing, setClearing] = useState(false);
   const [backendCount, setBackendCount] = useState<number | null>(null);
   const [importingDemo, setImportingDemo] = useState(false);
+  const [showAccount, setShowAccount] = useState(false);
 
   useEffect(() => {
     const u = getUser();
@@ -128,7 +130,7 @@ export default function FeedPage() {
           scene: m.scene,
           tags: m.tags,
         })),
-        user?.childName
+        user?.childName ? getCurrentIdentity() : undefined
       );
       if (result.success) {
         const { syncMemoriesFromBackend } = await import('@/lib/store');
@@ -156,7 +158,7 @@ export default function FeedPage() {
             role: 'user',
             content: `请分析下面这段回忆属于哪种时间类型。只返回一个类型关键字，不要其他文字。可选类型：${CHILDREN_FIVE_TIMES.map(t => `${t.value}(${t.label})`).join('、')}。\n\n回忆内容：${content.trim()}`
           }],
-          childName: user.childName,
+          childName: getCurrentIdentity(),
           memoryContext: '',
           userRole: 'parent',
         }),
@@ -212,7 +214,7 @@ export default function FeedPage() {
       const { getDemoData, DEMO_LABELS, DEMO_DATASET } = await import('@/data/demo-config');
       const records = getDemoData() as Record<string, any>[];
       const { importDemoData } = await import('@/lib/backend');
-      const result = await importDemoData(records, true, user?.childName);
+      const result = await importDemoData(records, true, getCurrentIdentity());
       if (result.success) {
         const { syncMemoriesFromBackend } = await import('@/lib/store');
         await syncMemoriesFromBackend();
@@ -291,6 +293,15 @@ export default function FeedPage() {
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" /></svg>
               清空
+            </button>
+            <button
+              onClick={() => setShowAccount(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors"
+              style={{ background: 'rgba(212,200,142,0.2)', borderColor: 'rgba(196,163,90,0.2)', color: TEXT_MAIN }}
+              title="账户信息 / 切换账户"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+              {user.parentName}
             </button>
             <div className="w-9 h-9 rounded-full overflow-hidden shadow-sm" style={{ background: 'rgba(255,251,240,0.4)' }}>
               <ParticleAvatar growth={Math.min(1, memories.length / 50)} size={36} />
@@ -599,12 +610,12 @@ export default function FeedPage() {
       {showClear && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-sm p-4" onClick={() => !clearing && setShowClear(false)}>
           <div className="rounded-2xl w-full max-w-sm p-6 border" style={{ background: CARD_BG, borderColor: 'rgba(196,99,88,0.2)' }} onClick={e => e.stopPropagation()}>
-            <h2 className="text-lg font-bold mb-2" style={{ color: TEXT_MAIN }}>清空所有数据</h2>
+            <h2 className="text-lg font-bold mb-2" style={{ color: TEXT_MAIN }}>清空当前账户数据</h2>
             <p className="text-sm mb-1" style={{ color: 'rgba(139,123,85,0.7)' }}>
-              这将删除后端数据库和本地的所有记忆记录，包括行为分析和价值信号。
+              这将删除「{user.parentName}→{user.childName}」名下的所有记忆记录，不影响其他账户。
             </p>
             <p className="text-xs mb-4" style={{ color: 'rgba(196,99,88,0.6)' }}>
-              ⚠️ 此操作不可逆，请确认后继续。
+              ⚠️ 此操作不可逆。示例数据可随时重新导入。
             </p>
             {backendCount !== null && (
               <p className="text-xs mb-4" style={{ color: 'rgba(139,123,85,0.5)' }}>
@@ -625,6 +636,53 @@ export default function FeedPage() {
                 className="flex-1 py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-40"
                 style={{ background: 'linear-gradient(90deg, #C46358, #A05048)' }}>
                 {clearing ? '清空中...' : '确认清空'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Account / Switch Account Modal */}
+      {showAccount && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-sm p-4" onClick={() => setShowAccount(false)}>
+          <div className="rounded-2xl w-full max-w-sm p-6 border" style={{ background: CARD_BG, borderColor: CARD_BORDER }} onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-bold mb-4" style={{ color: TEXT_MAIN }}>账户信息</h2>
+            <div className="space-y-3 mb-5">
+              <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'rgba(212,200,142,0.15)' }}>
+                <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #D4C88E, #C4A35A)' }}>
+                  <span className="text-white text-sm font-bold">{user.parentName?.[0] || '?'}</span>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium" style={{ color: TEXT_MAIN }}>{user.parentName}</p>
+                  <p className="text-xs" style={{ color: 'rgba(139,123,85,0.5)' }}>守护者</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'rgba(123,158,137,0.1)' }}>
+                <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #A3B599, #7B9E89)' }}>
+                  <span className="text-white text-sm font-bold">{user.childName?.[0] || '?'}</span>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium" style={{ color: TEXT_MAIN }}>{user.childName}</p>
+                  <p className="text-xs" style={{ color: 'rgba(139,123,85,0.5)' }}>{getChildAgeString(user.childBirthday)} · {memories.length}条回忆</p>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs mb-4 leading-relaxed" style={{ color: 'rgba(139,123,85,0.4)' }}>
+              切换账户会退出当前登录。数据按家长名+孩子名字安全保留，下次用同样的名字进入还能看到。
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowAccount(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium border"
+                style={{ background: 'rgba(255,251,240,0.5)', color: 'rgba(139,123,85,0.6)', borderColor: CARD_BORDER }}
+              >
+                关闭
+              </button>
+              <button
+                onClick={() => logoutUser()}
+                className="flex-1 py-2.5 rounded-xl text-white text-sm font-medium"
+                style={{ background: 'linear-gradient(90deg, #C4A35A, #7B9E89)' }}
+              >
+                切换账户
               </button>
             </div>
           </div>

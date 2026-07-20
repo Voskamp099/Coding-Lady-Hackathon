@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { getUser, logoutUser } from '@/lib/store';
 
 const navItems = [
   {
@@ -58,6 +59,14 @@ const INACTIVE_COLOR = '#8B7B65';
 
 export function BottomNav() {
   const pathname = usePathname();
+  const router = useRouter();
+  const user = typeof window !== 'undefined' ? getUser() : null;
+
+  const handleSwitchAccount = () => {
+    if (confirm('确定要切换账户吗？当前数据会按名字安全保留。')) {
+      logoutUser();
+    }
+  };
 
   return (
     <>
@@ -86,6 +95,20 @@ export function BottomNav() {
             </Link>
           );
         })}
+        {/* Account / Switch — bottom of sidebar */}
+        <div className="mt-auto">
+          <button
+            onClick={handleSwitchAccount}
+            className="flex flex-col items-center gap-1.5 py-3 px-3 rounded-2xl transition-all duration-300 hover:bg-white/20"
+            style={{ color: INACTIVE_COLOR + '99' }}
+            title={user ? `${user.parentName} → ${user.childName}\n点击切换账户` : '切换账户'}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <span className="text-[10px] font-medium">{user?.parentName?.[0] || '我'}</span>
+          </button>
+        </div>
       </nav>
 
       {/* Mobile bottom bar */}

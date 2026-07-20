@@ -203,7 +203,8 @@ class ChatAgent:
         from backend.extraction_pipeline import run_layer3
 
         if count_memories(child_name=child_name) == 0:
-            who = child_name or "你"
+            # 复合键 parentName::childName → 只取孩子名显示
+            who = (child_name.split("::", 1)[1] if child_name and "::" in child_name else child_name) or "你"
             return {
                 "answer": (
                     f"我还没有「{who}」的成长记忆呢。请先在「投喂」或对话里录入一些"
