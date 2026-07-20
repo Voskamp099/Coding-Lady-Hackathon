@@ -23,21 +23,37 @@ def _content_hash(raw_text: str) -> str:
     return hashlib.sha256((raw_text or "").strip().encode("utf-8")).hexdigest()
 
 
-def memory_exists_by_raw_text(raw_text: str) -> bool:
-    """检查某条 raw_text 是否已入库（data-based 去重）。"""
+def memory_exists_by_raw_text(raw_text: str, child_name: Optional[str] = None) -> bool:
+    """检查某条 raw_text 是否已入库（data-based 去重）。
+
+    child_name 给定时按账号隔离去重（不同账号可各自导入相同内容）；
+    省略时全局去重（旧行为，向后兼容）。
+    """
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT 1 FROM memories WHERE raw_text = ? LIMIT 1", ((raw_text or "").strip(),))
+    if child_name is not None:
+        cursor.execute(
+            "SELECT 1 FROM memories WHERE raw_text = ? AND child_name = ? LIMIT 1",
+            ((raw_text or "").strip(), child_name),
+        )
+    else:
+        cursor.execute("SELECT 1 FROM memories WHERE raw_text = ? LIMIT 1", ((raw_text or "").strip(),))
     found = cursor.fetchone() is not None
     conn.close()
     return found
 
 
-def get_memory_by_raw_text(raw_text: str) -> Optional[Memory]:
-    """按 raw_text 取已存在的记忆。"""
+def get_memory_by_raw_text(raw_text: str, child_name: Optional[str] = None) -> Optional[Memory]:
+    """按 raw_text 取已存在的记忆。child_name 给定时只在该账号下查找。"""
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM memories WHERE raw_text = ? LIMIT 1", ((raw_text or "").strip(),))
+    if child_name is not None:
+        cursor.execute(
+            "SELECT * FROM memories WHERE raw_text = ? AND child_name = ? LIMIT 1",
+            ((raw_text or "").strip(), child_name),
+        )
+    else:
+        cursor.execute("SELECT * FROM memories WHERE raw_text = ? LIMIT 1", ((raw_text or "").strip(),))
     row = cursor.fetchone()
     conn.close()
     return _row_to_memory(row) if row else None
@@ -98,9 +114,19 @@ def save_memory(memory: Memory, child_name: Optional[str] = None, skip_if_exists
         memory.metadata["child_name"] = child_name
 
     if skip_if_exists and raw_text:
-        existing = get_memory_by_raw_text(raw_text)
+        # 按账号隔离去重：只在当前 child_name 下检查是否已存在，
+        # 不同账号可各自导入相同内容（如同一套演示数据）
+        existing = get_memory_by_raw_text(raw_text, child_name=child_name)
         if existing is not None:
             return False, existing
+
+    # 给 id 加 child_name 命名空间：不同账号导入相同内容（如同一套演示数据）时
+    # 原始 id 相同，INSERT OR REPLACE 会跨账号互相覆盖。加前缀后各自独立。
+    if child_name:
+        storage_id = f"{child_name}::{memory.id}"
+        memory.id = storage_id
+    else:
+        storage_id = str(memory.id)
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -113,7 +139,7 @@ def save_memory(memory: Memory, child_name: Optional[str] = None, skip_if_exists
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
-            str(memory.id),
+            storage_id,
             child_name,
             memory.timestamp.isoformat() if hasattr(memory.timestamp, "isoformat") else str(memory.timestamp),
             memory.event,
