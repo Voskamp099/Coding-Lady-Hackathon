@@ -12,7 +12,7 @@ import json
 import hashlib
 from typing import List, Optional
 
-from backend.database import get_connection, clear_database as _clear_database
+from backend.database import get_connection, clear_database as _clear_database, clear_memories_for_child as _clear_memories_for_child
 from backend.models import Memory, ValueAnalysis, ValueSignal
 
 
@@ -186,6 +186,11 @@ def count_memories(child_name: Optional[str] = None) -> int:
 def clear_database():
     """清空所有数据（保留表结构）。"""
     return _clear_database()
+
+
+def clear_memories_for_child(child_name: str) -> int:
+    """清空指定名字下的记忆（不影响其他名字）。返回删除条数。"""
+    return _clear_memories_for_child(child_name)
 
 
 # ============================================================

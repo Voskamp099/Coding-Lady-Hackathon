@@ -131,6 +131,20 @@ def clear_database():
     return report
 
 
+def clear_memories_for_child(child_name: str) -> int:
+    """
+    只清空指定 child_name 下的记忆（不影响其他名字的数据）。
+    返回删除的行数。
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM memories WHERE child_name = ?", (child_name,))
+    count = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return count
+
+
 def drop_database_file():
     """彻底删除 db 文件（更彻底的清空，下次 init 会重建）。"""
     if os.path.exists(DB_PATH):
