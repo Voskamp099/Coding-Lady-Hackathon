@@ -94,10 +94,19 @@ function DimensionBars({ data, title, color, memories }: {
 }
 
 /* ========== 发展阶段时间线 ========== */
-function StageTimeline({ stages }: { stages: { stage: string; age: string; quality?: string; status?: string }[] }) {
+function StageTimeline({ stages, currentTask }: {
+  stages: { stage: string; age: string; quality?: string; status?: string; task?: string }[];
+  currentTask?: string;
+}) {
   return (
     <div className="rounded-2xl p-4 mb-3 border" style={{ background: BG_CARD, borderColor: 'rgba(196,163,90,0.15)' }}>
-      <h3 className="text-sm font-bold mb-3" style={{ color: TEXT_MAIN }}>发展阶段 · 埃里克森</h3>
+      <h3 className="text-sm font-bold mb-3" style={{ color: TEXT_MAIN }}>发展阶段</h3>
+      {currentTask && (
+        <p className="text-xs leading-relaxed mb-3 p-2.5 rounded-xl"
+           style={{ background: 'rgba(232,216,168,0.15)', color: GOLD_DEEP }}>
+          {currentTask}
+        </p>
+      )}
       <div className="space-y-1.5">
         {stages.map((s, i) => {
           const isCompleted = s.status === 'completed' || s.status === '已通过';
@@ -328,10 +337,13 @@ function GrowthPageInner() {
 
           {/* Module 4: Development Timeline */}
           {development && (
-            <StageTimeline stages={[
-              ...development.previousStages,
-              { stage: development.currentStage, age: development.currentAge, quality: development.quality, status: 'current' },
-            ]} />
+            <StageTimeline
+              currentTask={development.task}
+              stages={[
+                ...development.previousStages,
+                { stage: development.currentStage, age: development.currentAge, quality: development.quality, status: 'current', task: development.task },
+              ]}
+            />
           )}
 
           {/* Module 5: Time Distribution — 整合成一条堆叠条 + 一行图例，减少碎片 */}

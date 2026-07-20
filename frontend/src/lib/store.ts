@@ -59,6 +59,7 @@ export interface EriksonStage {
   age: string;
   quality: string;
   status: 'completed' | 'current' | 'future';
+  task?: string;
 }
 
 export interface DevelopmentProfile {
@@ -66,6 +67,7 @@ export interface DevelopmentProfile {
   currentAge: string;
   quality: string;
   description: string;
+  task: string;
   previousStages: EriksonStage[];
 }
 
@@ -124,12 +126,26 @@ export const INTELLIGENCE_TYPES = [
   { type: '自然观察智能', meaning: '辨识自然万物' },
 ] as const;
 
-/* ========== 埃里克森发展阶段（0-7岁） ========== */
+/* ========== 埃里克森发展阶段（全生命周期 8 阶段） ========== */
+// stage 用家长一眼就懂的大白话（替代学术术语"信任vs不信任"等）
+// task 是给家长一句直白的发展任务说明
 export const ERIKSON_STAGES = [
-  { stage: '信任vs不信任', age: '0-1.5岁', quality: '希望', minAgeMonths: 0, maxAgeMonths: 18 },
-  { stage: '自主vs羞愧怀疑', age: '1.5-3岁', quality: '意志', minAgeMonths: 18, maxAgeMonths: 36 },
-  { stage: '主动vs内疚', age: '3-6岁', quality: '目的', minAgeMonths: 36, maxAgeMonths: 72 },
-  { stage: '勤奋vs自卑', age: '6-7岁', quality: '能力', minAgeMonths: 72, maxAgeMonths: 96 },
+  { stage: '建立安全感', age: '0-1.5岁', quality: '希望', minAgeMonths: 0, maxAgeMonths: 18,
+    task: '最重要的是让孩子知道——哭的时候有人应、饿的时候有人喂，这个世界是安全的。' },
+  { stage: '学着自己来', age: '1.5-3岁', quality: '意志', minAgeMonths: 18, maxAgeMonths: 36,
+    task: '最重要的是允许孩子说"我自己来"——自己穿衣、自己吃饭，在试错中长出意志。' },
+  { stage: '好奇与探索', age: '3-6岁', quality: '目的', minAgeMonths: 36, maxAgeMonths: 72,
+    task: '最重要的是保护孩子的好奇心——让他自由探索、提问、创造，而不是打断或嘲笑。' },
+  { stage: '我能做好', age: '6-12岁', quality: '能力', minAgeMonths: 72, maxAgeMonths: 144,
+    task: '最重要的是让孩子体验"我能做好"——反复练习一项技能、被肯定过程而非结果。' },
+  { stage: '找到自己', age: '12-18岁', quality: '忠诚', minAgeMonths: 144, maxAgeMonths: 216,
+    task: '最重要的是陪孩子探索"我是谁"——允许试错、迷茫、重新选择，而不是替他定义。' },
+  { stage: '学会去爱', age: '18-40岁', quality: '爱', minAgeMonths: 216, maxAgeMonths: 480,
+    task: '最重要的是学会建立深层的关系——敢投入、敢受伤、敢在另一个人面前做真实的自己。' },
+  { stage: '创造与传承', age: '40-65岁', quality: '关心', minAgeMonths: 480, maxAgeMonths: 780,
+    task: '最重要的是找到"我能给世界留下什么"——不一定是孩子，可以是作品、学生、一份事业。' },
+  { stage: '接纳一生', age: '65岁+', quality: '智慧', minAgeMonths: 780, maxAgeMonths: 99999,
+    task: '最重要的是能回头看自己的一生说"值得"——接受所有遗憾和成就，把它们拼成完整的故事。' },
 ] as const;
 
 /* ========== 默认人格画像（基于芝麻胡种子数据提炼） ========== */
@@ -157,14 +173,18 @@ export function getDefaultPersonality(): PersonalityProfile {
       { type: '自然观察智能', score: 85, evidence: '看蚂蚁搬家30分钟、问叶子会不会疼' },
     ],
     development: {
-      currentStage: '勤奋vs自卑',
-      currentAge: '6-7岁',
+      currentStage: '我能做好',
+      currentAge: '6-12岁',
       quality: '能力',
       description: "孩子正在发展'我能做好吗'的能力感",
+      task: '最重要的是让孩子体验"我能做好"——反复练习一项技能、被肯定过程而非结果。',
       previousStages: [
-        { stage: '信任vs不信任', age: '0-1.5岁', quality: '希望', status: 'completed' },
-        { stage: '自主vs羞愧怀疑', age: '1.5-3岁', quality: '意志', status: 'completed' },
-        { stage: '主动vs内疚', age: '3-6岁', quality: '目的', status: 'completed' },
+        { stage: '建立安全感', age: '0-1.5岁', quality: '希望', status: 'completed',
+          task: '最重要的是让孩子知道——哭的时候有人应、饿的时候有人喂，这个世界是安全的。' },
+        { stage: '学着自己来', age: '1.5-3岁', quality: '意志', status: 'completed',
+          task: '最重要的是允许孩子说"我自己来"——自己穿衣、自己吃饭，在试错中长出意志。' },
+        { stage: '好奇与探索', age: '3-6岁', quality: '目的', status: 'completed',
+          task: '最重要的是保护孩子的好奇心——让他自由探索、提问、创造，而不是打断或嘲笑。' },
       ],
     },
     emotionalPatterns: [
@@ -563,7 +583,43 @@ export function getIntelligenceFromMemories(memories: Memory[]): PersonalityProf
 }
 
 export function getDevelopmentFromMemories(): DevelopmentProfile {
-  return getDefaultPersonality().development;
+  // 优先按孩子生日动态匹配当前阶段；取不到生日时回退到默认画像（6-12岁）
+  const user = getUser();
+  const birthDate = user?.childBirthday;
+  if (!birthDate) {
+    return getDefaultPersonality().development;
+  }
+
+  const { months } = calculateAge(birthDate);
+  // 命中区间：minAgeMonths <= months < maxAgeMonths
+  const currentIdx = ERIKSON_STAGES.findIndex(
+    s => months >= s.minAgeMonths && months < s.maxAgeMonths
+  );
+
+  // 超过已定义的最高阶段，按最后一个阶段展示（65岁+）
+  const idx = currentIdx === -1
+    ? (months >= ERIKSON_STAGES[ERIKSON_STAGES.length - 1].maxAgeMonths
+        ? ERIKSON_STAGES.length - 1
+        : 0)
+    : currentIdx;
+
+  const current = ERIKSON_STAGES[idx];
+  const previousStages: EriksonStage[] = ERIKSON_STAGES.slice(0, idx).map(s => ({
+    stage: s.stage,
+    age: s.age,
+    quality: s.quality,
+    status: 'completed' as const,
+    task: s.task,
+  }));
+
+  return {
+    currentStage: current.stage,
+    currentAge: current.age,
+    quality: current.quality,
+    description: `${current.stage} → ${current.quality}`,
+    task: current.task,
+    previousStages,
+  };
 }
 
 export function getEmotionalPatternsFromMemories(memories: Memory[]): PersonalityProfile['emotionalPatterns'] {
