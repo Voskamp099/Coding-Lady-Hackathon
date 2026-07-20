@@ -23,6 +23,7 @@ export default function ChatPage() {
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [perspective, setPerspective] = useState<'parent' | 'child'>('parent');
+  const [demoDataset, setDemoDataset] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -37,6 +38,7 @@ export default function ChatPage() {
     if (!u) { router.replace('/onboarding'); return; }
     setUser(u);
     if (u.role === 'child') setPerspective('child');
+    setDemoDataset(localStorage.getItem('demoDataset'));
     // Sync memories from backend so memoryContext includes DB data
     syncMemoriesFromBackend();
   }, [router]);
@@ -110,9 +112,18 @@ export default function ChatPage() {
     }
   }, [messages, streaming, user, perspective]);
 
-  const suggestions = perspective === 'parent'
-    ? ['孩子遇到困难容易放弃吗？', '他对什么事情最专注？', '孩子的人际关系怎么样？']
-    : ['我遇到困难会放弃吗？', '我对什么事情最专注？', '我和别人相处怎么样？'];
+  const suggestions = (() => {
+    const isLife = demoDataset === 'life';
+    if (perspective === 'parent') {
+      return isLife
+        ? ['我的孩子现在的选择正确吗？', '我的教育方式影响了孩子什么？', '我还能如何帮助我的孩子？']
+        : ['我的孩子是什么样的人？', '我的教育方式适合我的孩子吗？', '我的孩子为什么会这样？'];
+    } else {
+      return isLife
+        ? ['我适合什么专业和职业？', '我的优势和天赋是什么？', '我应该如何面对自己的不足？']
+        : ['我小时候是怎样的孩子？', '爸爸妈妈为什么这样教育我？', '我小时候有哪些闪光点？'];
+    }
+  })();
 
   const avatarLabel = perspective === 'parent'
     ? `${user?.childName || '宝宝'}的孪生体 · 家长视角`
