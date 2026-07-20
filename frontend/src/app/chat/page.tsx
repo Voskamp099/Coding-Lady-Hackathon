@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { BottomNav } from '@/components/bottom-nav';
 import { ParticleAvatar } from '@/components/particle-avatar';
-import { getUser, getMemories, CHILDREN_FIVE_TIMES, syncMemoriesFromBackend, getCurrentIdentity } from '@/lib/store';
+import { getUser, syncMemoriesFromBackend, getCurrentIdentity } from '@/lib/store';
 import { Markdown } from '@/components/markdown';
 import { LoadingQuotes } from '@/components/loading-quotes';
 
@@ -39,18 +39,6 @@ export default function ChatPage() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const buildMemoryContext = useCallback(() => {
-    // 干净版：给 LLM 看的记忆摘要。不用 [xxx] 方括号（LLM 会复读），
-    // 改成 markdown 列表，类型/情绪/场景用"主题"短字段
-    const memories = getMemories();
-    return memories.slice(0, 10).map(m => {
-      const primaryType = m.timeTypes?.[0];
-      const t = primaryType ? CHILDREN_FIVE_TIMES.find(x => x.value === primaryType) : undefined;
-      const topic = t?.label || '日常';
-      return `- ${m.date}（${m.scene} · ${m.emotion} · ${topic}）：${m.content}`;
-    }).join('\n');
-  }, []);
-
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || streaming) return;
     setStreaming(true);
@@ -70,7 +58,6 @@ export default function ChatPage() {
         body: JSON.stringify({
           messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content })),
           childName: getCurrentIdentity() || '宝宝',
-          memoryContext: buildMemoryContext(),
           userRole: perspective,
         }),
         signal: controller.signal,
@@ -116,7 +103,7 @@ export default function ChatPage() {
       setStreaming(false);
       abortRef.current = null;
     }
-  }, [messages, streaming, user, perspective, buildMemoryContext]);
+  }, [messages, streaming, user, perspective]);
 
   const suggestions = perspective === 'parent'
     ? ['小宝今天有什么特别的事吗？', '说说小宝的性格特点', '小宝最近在成长什么方面？']

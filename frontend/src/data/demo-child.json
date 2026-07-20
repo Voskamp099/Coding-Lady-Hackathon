@@ -8,9 +8,17 @@
     "emotion": "平静专注",
     "child_behavior": "眼睛追随移动的彩色动物挂件，身体静止，偶尔挥动一下手臂",
     "parent_observation": "他对移动的物体很着迷，能盯着看很久，不容易分心。",
-    "behavior_signals": ["deep_focus"],
-    "value_signals": ["curiosity"],
-    "confidence": "high"
+    "behavior_signals": [
+      "deep_focus"
+    ],
+    "value_signals": [
+      "curiosity"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "flow"
+    ],
+    "date": "2018-04-10"
   },
   {
     "id": "TM_002",
@@ -21,9 +29,19 @@
     "emotion": "急切但坚定",
     "child_behavior": "爬向玩具，滑倒，爬起，再次伸手去抓，直到抓住",
     "parent_observation": "这孩子挺倔的，拿不到东西不罢休，也不怎么哭闹求助。",
-    "behavior_signals": ["persistent", "handles_failure"],
-    "value_signals": ["challenge", "achievement"],
-    "confidence": "high"
+    "behavior_signals": [
+      "persistent",
+      "handles_failure"
+    ],
+    "value_signals": [
+      "challenge",
+      "achievement"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "health"
+    ],
+    "date": "2018-09-07"
   },
   {
     "id": "TM_003",
@@ -34,9 +52,17 @@
     "emotion": "警惕、焦虑",
     "child_behavior": "转身抱住母亲大腿，把脸埋进妈妈怀里，不肯抬头",
     "parent_observation": "他比较慢热，对陌生人的反应比较敏感，需要时间适应。",
-    "behavior_signals": ["socially_sensitive"],
-    "value_signals": ["relationships"],
-    "confidence": "medium"
+    "behavior_signals": [
+      "socially_sensitive"
+    ],
+    "value_signals": [
+      "relationships"
+    ],
+    "confidence": "medium",
+    "timeTypes": [
+      "survival"
+    ],
+    "date": "2019-03-11"
   },
   {
     "id": "TM_004",
@@ -47,9 +73,18 @@
     "emotion": "兴奋、惊喜",
     "child_behavior": "用力拍水，看水花溅到墙上，大笑，再次拍打",
     "parent_observation": "他在探索因果关系，似乎很享受这种‘破坏’带来的反馈。",
-    "behavior_signals": ["likes_experimentation", "learns_by_doing"],
-    "value_signals": ["curiosity"],
-    "confidence": "high"
+    "behavior_signals": [
+      "likes_experimentation",
+      "learns_by_doing"
+    ],
+    "value_signals": [
+      "curiosity"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "health"
+    ],
+    "date": "2019-06-09"
   },
   {
     "id": "TM_005",
@@ -60,9 +95,18 @@
     "emotion": "独立自主、稍显急躁",
     "child_behavior": "推开妈妈的手，尝试把脚塞进鞋子里，穿反了也不肯换",
     "parent_observation": "自主意识很强，这时候如果帮他，他会发火。",
-    "behavior_signals": ["independent", "persistent"],
-    "value_signals": ["independence"],
-    "confidence": "high"
+    "behavior_signals": [
+      "independent",
+      "persistent"
+    ],
+    "value_signals": [
+      "independence"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "health"
+    ],
+    "date": "2020-01-10"
   },
   {
     "id": "TM_006",
@@ -73,9 +117,18 @@
     "emotion": "好奇",
     "child_behavior": "反复指着重龙的脖子问‘为什么长’，妈妈解释后接着问‘为什么吃树叶’",
     "parent_observation": "最近进入了‘十万个为什么’阶段，问题有时候很无厘头，但他很认真。",
-    "behavior_signals": ["asks_questions", "deep_focus"],
-    "value_signals": ["curiosity"],
-    "confidence": "high"
+    "behavior_signals": [
+      "asks_questions",
+      "deep_focus"
+    ],
+    "value_signals": [
+      "curiosity"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "play"
+    ],
+    "date": "2020-06-08"
   },
   {
     "id": "TM_007",
@@ -86,9 +139,19 @@
     "emotion": "专注",
     "child_behavior": "不断装沙、漏下，尝试用不同的容器，尝试把干沙和湿沙混在一起",
     "parent_observation": "他可以一个人在沙坑玩半小时，完全沉浸在自己的世界里。",
-    "behavior_signals": ["likes_experimentation", "independent"],
-    "value_signals": ["curiosity", "independence"],
-    "confidence": "high"
+    "behavior_signals": [
+      "likes_experimentation",
+      "independent"
+    ],
+    "value_signals": [
+      "curiosity",
+      "independence"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "flow"
+    ],
+    "date": "2020-09-06"
   },
   {
     "id": "TM_008",
@@ -99,9 +162,19 @@
     "emotion": "同情、略显担忧",
     "child_behavior": "看到同伴哭，走过去递上自己的小汽车，拍拍对方肩膀",
     "parent_observation": "老师说他很会安慰人，虽然他自己也才刚适应环境。",
-    "behavior_signals": ["socially_sensitive", "takes_lead"],
-    "value_signals": ["relationships", "helping_others"],
-    "confidence": "medium"
+    "behavior_signals": [
+      "socially_sensitive",
+      "takes_lead"
+    ],
+    "value_signals": [
+      "relationships",
+      "helping_others"
+    ],
+    "confidence": "medium",
+    "timeTypes": [
+      "survival"
+    ],
+    "date": "2021-01-09"
   },
   {
     "id": "TM_009",
@@ -112,9 +185,19 @@
     "emotion": "短暂沮丧，随即转为兴奋",
     "child_behavior": "看着倒塌的积木愣了一秒，然后大笑着说‘地震啦！’，开始重新搭",
     "parent_observation": "他很少因为失败真的哭鼻子，反而觉得这也是游戏的一部分。",
-    "behavior_signals": ["handles_failure", "creative"],
-    "value_signals": ["growth", "challenge"],
-    "confidence": "high"
+    "behavior_signals": [
+      "handles_failure",
+      "creative"
+    ],
+    "value_signals": [
+      "growth",
+      "challenge"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "achievement"
+    ],
+    "date": "2021-06-08"
   },
   {
     "id": "TM_010",
@@ -125,9 +208,18 @@
     "emotion": "自信",
     "child_behavior": "老师问为什么，回答说‘因为太阳今天心情不好，很冷’",
     "parent_observation": "他的想法总是很特别，不太按常理出牌。",
-    "behavior_signals": ["creative", "independent"],
-    "value_signals": ["creativity"],
-    "confidence": "high"
+    "behavior_signals": [
+      "creative",
+      "independent"
+    ],
+    "value_signals": [
+      "creativity"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "play"
+    ],
+    "date": "2022-01-09"
   },
   {
     "id": "TM_011",
@@ -138,9 +230,18 @@
     "emotion": "认真",
     "child_behavior": "妈妈拿一个，他数一个，数到5以后接着数6、7，即使没有对应的苹果",
     "parent_observation": "对数字开始有概念了，而且很喜欢展示他的计数能力。",
-    "behavior_signals": ["learns_by_doing", "likes_structure"],
-    "value_signals": ["achievement"],
-    "confidence": "medium"
+    "behavior_signals": [
+      "learns_by_doing",
+      "likes_structure"
+    ],
+    "value_signals": [
+      "achievement"
+    ],
+    "confidence": "medium",
+    "timeTypes": [
+      "achievement"
+    ],
+    "date": "2022-03-10"
   },
   {
     "id": "TM_012",
@@ -151,9 +252,19 @@
     "emotion": "亢奋、掌控欲",
     "child_behavior": "分配角色，指定路线，告诉大家‘谁负责找宝藏，谁负责守门’",
     "parent_observation": "他是孩子王，喜欢制定规则，要是别人不按规则玩他会生气。",
-    "behavior_signals": ["takes_lead", "likes_structure"],
-    "value_signals": ["achievement", "independence"],
-    "confidence": "high"
+    "behavior_signals": [
+      "takes_lead",
+      "likes_structure"
+    ],
+    "value_signals": [
+      "achievement",
+      "independence"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "play"
+    ],
+    "date": "2022-06-08"
   },
   {
     "id": "TM_013",
@@ -164,9 +275,19 @@
     "emotion": "受挫、焦躁",
     "child_behavior": "拼不好天空部分，把拼图块摔在地上，坐一旁生闷气，半小时后回去继续拼",
     "parent_observation": "脾气急，但是能自己消化情绪，最后还是会完成任务。",
-    "behavior_signals": ["handles_failure", "persistent"],
-    "value_signals": ["achievement", "growth"],
-    "confidence": "high"
+    "behavior_signals": [
+      "handles_failure",
+      "persistent"
+    ],
+    "value_signals": [
+      "achievement",
+      "growth"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "achievement"
+    ],
+    "date": "2023-01-09"
   },
   {
     "id": "TM_014",
@@ -177,9 +298,19 @@
     "emotion": "极度专注",
     "child_behavior": "蹲在湿漉漉的地上看了20分钟蜗牛，衣服湿了也不在意，试图用树叶给蜗牛搭桥",
     "parent_observation": "一旦对某个生物感兴趣，就会完全忽略周围环境。",
-    "behavior_signals": ["deep_focus", "explores_new_things"],
-    "value_signals": ["curiosity", "helping_others"],
-    "confidence": "high"
+    "behavior_signals": [
+      "deep_focus",
+      "explores_new_things"
+    ],
+    "value_signals": [
+      "curiosity",
+      "helping_others"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "flow"
+    ],
+    "date": "2023-04-09"
   },
   {
     "id": "TM_015",
@@ -190,9 +321,19 @@
     "emotion": "好奇且执着",
     "child_behavior": "混合了洗洁精、颜料和醋，弄得一团糟，虽然实验‘失败’了，但记录了结果",
     "parent_observation": "哪怕结果乱七八糟，他也很享受试错的过程。",
-    "behavior_signals": ["likes_experimentation", "creative"],
-    "value_signals": ["curiosity", "growth"],
-    "confidence": "high"
+    "behavior_signals": [
+      "likes_experimentation",
+      "creative"
+    ],
+    "value_signals": [
+      "curiosity",
+      "growth"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "play"
+    ],
+    "date": "2023-09-06"
   },
   {
     "id": "TM_016",
@@ -203,9 +344,18 @@
     "emotion": "紧张但合作",
     "child_behavior": "声音很小，但逻辑清晰，指着绘本细节回答‘小兔子为什么哭’",
     "parent_observation": "在陌生权威面前比较拘谨，但观察力很敏锐。",
-    "behavior_signals": ["socially_sensitive", "deep_focus"],
-    "value_signals": ["achievement"],
-    "confidence": "medium"
+    "behavior_signals": [
+      "socially_sensitive",
+      "deep_focus"
+    ],
+    "value_signals": [
+      "achievement"
+    ],
+    "confidence": "medium",
+    "timeTypes": [
+      "survival"
+    ],
+    "date": "2024-01-09"
   },
   {
     "id": "TM_017",
@@ -216,9 +366,18 @@
     "emotion": "愤怒、委屈",
     "child_behavior": "详细讲述谁插队了，谁没排队，认为这‘非常不公平’",
     "parent_observation": "他对规则和公平很执着，甚至有点死板，容易因此和同学摩擦。",
-    "behavior_signals": ["likes_structure"],
-    "value_signals": ["relationships", "achievement"],
-    "confidence": "high"
+    "behavior_signals": [
+      "likes_structure"
+    ],
+    "value_signals": [
+      "relationships",
+      "achievement"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "survival"
+    ],
+    "date": "2024-03-09"
   },
   {
     "id": "TM_018",
@@ -229,9 +388,19 @@
     "emotion": "探索欲",
     "child_behavior": "偷偷拿工具把闹钟拆开，想看里面的齿轮，结果装不回去了",
     "parent_observation": "他对机械结构有强烈的探索欲，虽然这次代价是一个闹钟。",
-    "behavior_signals": ["explores_new_things", "learns_by_doing"],
-    "value_signals": ["curiosity", "challenge"],
-    "confidence": "high"
+    "behavior_signals": [
+      "explores_new_things",
+      "learns_by_doing"
+    ],
+    "value_signals": [
+      "curiosity",
+      "challenge"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "play"
+    ],
+    "date": "2024-06-07"
   },
   {
     "id": "TM_019",
@@ -242,9 +411,19 @@
     "emotion": "失落、羞愧",
     "child_behavior": "低头不语，眼圈红了，但下课还是帮新组长搬作业本",
     "parent_observation": "很在意能不能当领导者，但也懂得遵守集体的结果，即使心里不好受。",
-    "behavior_signals": ["handles_failure", "socially_sensitive"],
-    "value_signals": ["relationships", "growth"],
-    "confidence": "high"
+    "behavior_signals": [
+      "handles_failure",
+      "socially_sensitive"
+    ],
+    "value_signals": [
+      "relationships",
+      "growth"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "survival"
+    ],
+    "date": "2024-08-06"
   },
   {
     "id": "TM_020",
@@ -255,9 +434,19 @@
     "emotion": "坚毅",
     "child_behavior": "不断被绊倒，调整姿势，数着数，拒绝回家吃饭直到跳够10个",
     "parent_observation": "只要是设定了目标，他就会展现出惊人的毅力。",
-    "behavior_signals": ["persistent", "likes_structure"],
-    "value_signals": ["achievement", "challenge"],
-    "confidence": "high"
+    "behavior_signals": [
+      "persistent",
+      "likes_structure"
+    ],
+    "value_signals": [
+      "achievement",
+      "challenge"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "health"
+    ],
+    "date": "2024-10-05"
   },
   {
     "id": "TM_021",
@@ -268,9 +457,19 @@
     "emotion": "着迷",
     "child_behavior": "站在火箭模型前问讲解员关于燃料的问题，画了草图，无视同伴催促",
     "parent_observation": "对太空知识的兴趣已经超过了普通的喜欢，开始表现出专业的倾向。",
-    "behavior_signals": ["deep_focus", "asks_questions"],
-    "value_signals": ["curiosity", "achievement"],
-    "confidence": "high"
+    "behavior_signals": [
+      "deep_focus",
+      "asks_questions"
+    ],
+    "value_signals": [
+      "curiosity",
+      "achievement"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "flow"
+    ],
+    "date": "2025-01-08"
   },
   {
     "id": "TM_022",
@@ -281,9 +480,19 @@
     "emotion": "自豪",
     "child_behavior": "不满足于老师教的竖式计算，自己想出了一种凑整的方法，并向爸爸演示",
     "parent_observation": "他不喜欢死记硬背，总想找捷径或者新方法解决问题。",
-    "behavior_signals": ["creative", "independent"],
-    "value_signals": ["creativity", "achievement"],
-    "confidence": "high"
+    "behavior_signals": [
+      "creative",
+      "independent"
+    ],
+    "value_signals": [
+      "creativity",
+      "achievement"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "flow"
+    ],
+    "date": "2025-02-07"
   },
   {
     "id": "TM_023",
@@ -294,9 +503,19 @@
     "emotion": "害怕但兴奋",
     "child_behavior": "犹豫了很久，最后深吸一口气冲下去，摔了一跤爬起来喊‘我还要来一次’",
     "parent_observation": "他在冒险和谨慎之间寻找平衡，一旦突破心理障碍就很享受刺激。",
-    "behavior_signals": ["handles_failure", "explores_new_things"],
-    "value_signals": ["challenge", "growth"],
-    "confidence": "high"
+    "behavior_signals": [
+      "handles_failure",
+      "explores_new_things"
+    ],
+    "value_signals": [
+      "challenge",
+      "growth"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "health"
+    ],
+    "date": "2025-04-08"
   },
   {
     "id": "TM_024",
@@ -307,9 +526,19 @@
     "emotion": "关切、责任感",
     "child_behavior": "悄悄倒水放在床头，帮妈妈盖被子，自己安静地看书不打扰",
     "parent_observation": "他的同理心很强，能敏锐感知大人的情绪变化并做出反应。",
-    "behavior_signals": ["socially_sensitive", "takes_lead"],
-    "value_signals": ["relationships", "helping_others"],
-    "confidence": "high"
+    "behavior_signals": [
+      "socially_sensitive",
+      "takes_lead"
+    ],
+    "value_signals": [
+      "relationships",
+      "helping_others"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "survival"
+    ],
+    "date": "2025-05-08"
   },
   {
     "id": "TM_025",
@@ -320,9 +549,19 @@
     "emotion": "有条不紊",
     "child_behavior": "把错题分类贴上标签，用不同颜色的笔标注原因，制定了复习计划表",
     "parent_observation": "他的自我管理能力开始形成，比以前更有条理了。",
-    "behavior_signals": ["likes_structure", "independent"],
-    "value_signals": ["achievement", "growth"],
-    "confidence": "high"
+    "behavior_signals": [
+      "likes_structure",
+      "independent"
+    ],
+    "value_signals": [
+      "achievement",
+      "growth"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "achievement"
+    ],
+    "date": "2025-06-07"
   },
   {
     "id": "TM_026",
@@ -333,9 +572,19 @@
     "emotion": "不满",
     "child_behavior": "跑过去跟装修工人说‘叔叔，能不能半小时后再敲，我在看这本很难的书’",
     "parent_observation": "胆子变大了，懂得维护自己的权益，而且很礼貌。",
-    "behavior_signals": ["takes_lead", "independent"],
-    "value_signals": ["independence", "achievement"],
-    "confidence": "medium"
+    "behavior_signals": [
+      "takes_lead",
+      "independent"
+    ],
+    "value_signals": [
+      "independence",
+      "achievement"
+    ],
+    "confidence": "medium",
+    "timeTypes": [
+      "achievement"
+    ],
+    "date": "2025-07-07"
   },
   {
     "id": "TM_027",
@@ -346,9 +595,19 @@
     "emotion": "充满想象",
     "child_behavior": "写了一个两千字的短篇，设定了复杂的世界观和角色关系，结局开放",
     "parent_observation": "他的思维已经很有深度了，不再满足于简单的起承转合。",
-    "behavior_signals": ["creative", "deep_focus"],
-    "value_signals": ["creativity", "achievement"],
-    "confidence": "high"
+    "behavior_signals": [
+      "creative",
+      "deep_focus"
+    ],
+    "value_signals": [
+      "creativity",
+      "achievement"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "flow"
+    ],
+    "date": "2025-08-06"
   },
   {
     "id": "TM_028",
@@ -359,9 +618,19 @@
     "emotion": "恐惧到释然",
     "child_behavior": "站在岸边发抖，看朋友跳下去，最后闭眼跳下去，浮上来时在笑",
     "parent_observation": "社交压力对他有正向推动作用，同伴的影响开始显现。",
-    "behavior_signals": ["handles_failure", "socially_sensitive"],
-    "value_signals": ["relationships", "challenge"],
-    "confidence": "high"
+    "behavior_signals": [
+      "handles_failure",
+      "socially_sensitive"
+    ],
+    "value_signals": [
+      "relationships",
+      "challenge"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "health"
+    ],
+    "date": "2025-09-05"
   },
   {
     "id": "TM_029",
@@ -372,9 +641,19 @@
     "emotion": "积极",
     "child_behavior": "把旧玩具打包成‘盲盒’卖，并画了海报宣传，销量最好",
     "parent_observation": "他懂得利用创意解决问题，不仅是玩耍，开始有了商业思维的雏形。",
-    "behavior_signals": ["creative", "takes_lead"],
-    "value_signals": ["achievement", "independence"],
-    "confidence": "high"
+    "behavior_signals": [
+      "creative",
+      "takes_lead"
+    ],
+    "value_signals": [
+      "achievement",
+      "independence"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "play"
+    ],
+    "date": "2025-10-05"
   },
   {
     "id": "TM_030",
@@ -385,8 +664,18 @@
     "emotion": "冷静解决",
     "child_behavior": "发现少了一个零件，没有发火，用橡皮泥捏了一个形状相似的替代品涂上颜色",
     "parent_observation": "以前遇到这种事会哭，现在解决问题的能力明显变强了。",
-    "behavior_signals": ["handles_failure", "creative"],
-    "value_signals": ["growth", "challenge"],
-    "confidence": "high"
+    "behavior_signals": [
+      "handles_failure",
+      "creative"
+    ],
+    "value_signals": [
+      "growth",
+      "challenge"
+    ],
+    "confidence": "high",
+    "timeTypes": [
+      "achievement"
+    ],
+    "date": "2025-11-04"
   }
 ]

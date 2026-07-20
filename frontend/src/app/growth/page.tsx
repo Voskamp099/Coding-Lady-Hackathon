@@ -31,13 +31,7 @@ const emotionColors = [PINK, BLUE, GOLD, GREEN, 'rgba(212,200,142,0.3)'];
 const emotionBgs = ['rgba(240,200,200,0.06)', 'rgba(200,224,240,0.06)', 'rgba(212,200,142,0.06)', 'rgba(200,224,200,0.06)', 'rgba(212,200,142,0.04)'];
 const BG_CARD = 'rgba(255,252,248,0.5)';
 
-const timeTypeColors: Record<string, string> = {
-  health: GREEN,
-  play: '#B0D0E8',
-  survival: '#D0C0B0',
-  achievement: GOLD_DEEP,
-  flow: '#C0A880',
-};
+/* 五种时间配色：直接对齐「投喂界面」store 里的 CHILDREN_FIVE_TIMES（t.color / t.colorDeep），五色分明 */
 
 /* ========== CSS 条形图组件（替代 SVG 雷达图） ========== */
 function DimensionBars({ data, title, color, memories }: {
@@ -340,27 +334,48 @@ function GrowthPageInner() {
             ]} />
           )}
 
-          {/* Module 5: Time Distribution */}
-          <div className="rounded-2xl p-4 mb-3 border" style={{ background: BG_CARD, borderColor: 'rgba(196,163,90,0.15)' }}>
-            <h3 className="text-sm font-bold mb-3" style={{ color: TEXT_MAIN }}>五种时间分布</h3>
-            <div className="grid grid-cols-5 gap-2 mb-1">
-              {CHILDREN_FIVE_TIMES.map(t => {
-                const count = memories.filter(m => (m?.timeTypes || []).includes(t.value)).length;
-                const percent = memories.length > 0 ? Math.round((count / memories.length) * 100) : 0;
-                const color = timeTypeColors[t.value] || '#B5A598';
-                return (
-                  <div key={t.value} className="flex flex-col items-center gap-1">
-                    <span className="text-base">{t.icon}</span>
-                    <span className="text-[9px] text-center" style={{ color: 'rgba(139,123,85,0.6)' }}>{t.label}</span>
-                    <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(139,123,85,0.1)' }}>
-                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${percent}%`, backgroundColor: color }} />
-                    </div>
-                    <span className="text-[9px] font-bold" style={{ color }}>{count}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          {/* Module 5: Time Distribution — 整合成一条堆叠条 + 一行图例，减少碎片 */}
+          {(() => {
+            const dist = CHILDREN_FIVE_TIMES.map(t => ({
+              ...t,
+              count: memories.filter(m => (m?.timeTypes || []).includes(t.value)).length,
+            }));
+            const totalTagged = dist.reduce((s, d) => s + d.count, 0) || 1;
+            return (
+              <div className="rounded-2xl p-4 mb-3 border" style={{ background: BG_CARD, borderColor: 'rgba(196,163,90,0.15)' }}>
+                <h3 className="text-sm font-bold mb-3" style={{ color: TEXT_MAIN }}>五种时间分布</h3>
+                {/* 单条堆叠色带：五色一目了然，对齐投喂界面配色 */}
+                <div className="flex w-full h-4 rounded-full overflow-hidden mb-3" style={{ background: 'rgba(139,123,85,0.08)' }}>
+                  {dist.map(d => {
+                    const w = (d.count / totalTagged) * 100;
+                    if (w <= 0) return null;
+                    return (
+                      <div
+                        key={d.value}
+                        className="h-full transition-all duration-700 first:rounded-l-full last:rounded-r-full"
+                        style={{ width: `${w}%`, backgroundColor: d.colorDeep }}
+                        title={`${d.label} ${d.count}`}
+                      />
+                    );
+                  })}
+                </div>
+                {/* 图例：五个整齐的小块 */}
+                <div className="grid grid-cols-5 gap-1.5">
+                  {dist.map(d => {
+                    const percent = Math.round((d.count / totalTagged) * 100);
+                    return (
+                      <div key={d.value} className="flex flex-col items-center gap-0.5">
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.colorDeep }} />
+                        <span className="text-[9px]" style={{ color: 'rgba(139,123,85,0.6)' }}>{d.label}</span>
+                        <span className="text-[10px] font-bold" style={{ color: d.colorDeep }}>{d.count}</span>
+                        <span className="text-[8px]" style={{ color: 'rgba(139,123,85,0.4)' }}>{percent}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Module 6: Emotional Patterns */}
           {emotionalPatterns.length > 0 && (

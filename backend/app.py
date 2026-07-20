@@ -130,8 +130,11 @@ def _map_demo_record(r: dict) -> Memory:
     """把演示 JSON 记录映射成 Memory（sample-children 儿童 / sample-life 人生 两种格式都兼容）。"""
     age = str(r.get("age", ""))
     year = r.get("year")
-    # 时间戳：优先 year，否则用 age 推算
-    if year:
+    date_str = r.get("date")  # 新增：支持 YYYY-MM-DD 精确日期
+    # 时间戳：优先 date，其次 year，否则用 age 推算
+    if date_str:
+        ts = date_str
+    elif year:
         try:
             ts = date(int(year), 1, 1).isoformat()
         except Exception:
@@ -144,6 +147,7 @@ def _map_demo_record(r: dict) -> Memory:
     decision = r.get("decision") or r.get("child_behavior") or ""
     outcome = r.get("outcome") or r.get("parent_observation") or ""
     emotion = r.get("emotion", "")
+    time_types = r.get("timeTypes", [])  # 新增：五种时间分类
 
     raw_text = " | ".join(p for p in [event, bg, decision, outcome] if p)
 
@@ -172,8 +176,10 @@ def _map_demo_record(r: dict) -> Memory:
             "demo_id": r.get("id"),
             "age": age,
             "year": year,
+            "date": date_str,
             "time": r.get("time"),
             "emotion": emotion,
+            "timeTypes": time_types,
             "value_signals": value_signals,
             "life_stage": r.get("life_stage"),
         },
@@ -337,3 +343,116 @@ async def chat(request: ChatRequest):
         value_synthesis=result.get("value_synthesis"),
         stats=result.get("stats", {}),
     )
+
+
+# ---------- 五种时间 AI 分类（轻量级，用 KB 定义做 RAG） ----------
+
+class ClassifyTimeRequest(BaseModel):
+    text: str = Field(..., min_length=1, description="要分类的记忆文本")
+
+
+class ClassifyTimeResponse(BaseModel):
+    success: bool
+    type: Optional[str] = None  # health / play / survival / achievement / flow
+    label: Optional[str] = None  # 中文名
+    message: str = ""
+
+
+_VALID_TYPES = {
+    "health": "健康",
+    "play": "好玩",
+    "survival": "生存",
+    "achievement": "成就",
+    "flow": "心流",
+}
+
+
+# LLM 输出 → 类型的解析映射（同时支持英文 key 和中文名，非正则分类，只是解析模型输出）
+_LABEL_TO_TYPE = {v: k for k, v in _VALID_TYPES.items()}  # 健康→health ...
+
+
+def _parse_time_type(raw: str) -> Optional[str]:
+    """从 LLM 原始输出里解析出五类之一。先英文 key，再中文名。解析不到返回 None。"""
+    if not raw:
+        return None
+    low = raw.strip().lower()
+    # 1) 英文 key
+    for t in _VALID_TYPES:
+        if t in low:
+            return t
+    # 2) 中文名
+    for label, t in _LABEL_TO_TYPE.items():
+        if label in raw:
+            return t
+    return None
+
+
+@router.post("/classify-time", response_model=ClassifyTimeResponse)
+async def classify_time(request: ClassifyTimeRequest):
+    """
+    用 KB 里的五种时间「定义 + 举例」做 RAG few-shot，调 LLM 分类（不用正则）。
+    轻量级：只发一条短 prompt（紧凑定义 + few-shot + 记忆文本），不走完整 chat pipeline。
+    每条都能匹配：强制 LLM 从五类里选一个；解析同时兼容英文 key 与中文名。
+    """
+    from backend.knowledge_base import get_knowledge_base
+    from backend.config import get_settings
+    from openai import AsyncOpenAI
+    import httpx
+
+    cfg = get_settings()
+    kb = get_knowledge_base()
+    kb_context = kb.get_five_time_types_classify_context()
+
+    system_prompt = (
+        "你是 TimeMirror 的「儿童五种时间」分类器，依据王潇《小日常、大奇迹》的五种时间框架。\n"
+        "你的唯一任务：把一条成长记录判定为且仅为五类之一。\n\n"
+        f"{kb_context}\n\n"
+        "# 判定规则\n"
+        "1. 必须从 health / play / survival / achievement / flow 里选【恰好一个】最贴切的。\n"
+        "2. 一条记录常同时含多类信号时，选【最核心、最能代表这件事意义】的那一类。\n"
+        "3. 区分要点：\n"
+        "   - 单纯图开心/好奇地玩 → play；克服害怕困难/面对陌生规则 → survival。\n"
+        "   - 学会/完成/做到某事、有成果 → achievement；长时间忘我专注/深度共情顿悟 → flow。\n"
+        "   - 跑跳爬、身体发育、饮食睡眠生病 → health。\n"
+        "4. 绝不能拒答或说无法判断——一定要给出五类中的一个。\n"
+        "# 输出\n"
+        "只输出一个英文关键字（health / play / survival / achievement / flow），不要任何多余文字、标点或解释。"
+    )
+    user_prompt = f"请分类这条记录：\n{request.text[:400]}"
+
+    try:
+        client = AsyncOpenAI(
+            api_key=cfg.openai_api_key,
+            base_url=cfg.openai_base_url,
+            http_client=httpx.AsyncClient(trust_env=False, timeout=30.0),
+        )
+        resp = await client.chat.completions.create(
+            model=cfg.model_name,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            max_tokens=10,
+            temperature=0.0,
+        )
+        raw = resp.choices[0].message.content or ""
+        matched = _parse_time_type(raw)
+
+        if not matched:
+            # 极少数解析不到时兜底（保证"每条都能匹配"），不做正则分类
+            matched = "play"
+
+        return ClassifyTimeResponse(
+            success=True,
+            type=matched,
+            label=_VALID_TYPES[matched],
+            message=f"分类为：{_VALID_TYPES[matched]}",
+        )
+    except Exception as e:
+        # LLM 失败也兜底，保证前端始终拿到一个可用分类
+        return ClassifyTimeResponse(
+            success=False,
+            type="play",
+            label="好玩",
+            message=f"分类失败，默认为好玩: {e}",
+        )

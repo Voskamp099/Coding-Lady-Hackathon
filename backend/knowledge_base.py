@@ -172,6 +172,55 @@ class KnowledgeBase:
         top_idx = np.argsort(-sims)[:k]
         return [self.chunks[i] for i in top_idx]
 
+    # ---------- 五种时间定义（用于分类 prompt） ----------
+    def get_five_time_types_definition(self) -> str:
+        """返回王潇·儿童五种时间的完整定义，用于分类 prompt。"""
+        chunks = [c for c in self.chunks if "五种时间" in c.section or "王潇" in c.section]
+        if not chunks:
+            return (
+                "健康(health)：运动、户外、身体发育——让身体有活力\n"
+                "好玩(play)：纯粹为高兴而玩，不为收入、健康或意义\n"
+                "生存(survival)：应对困难、克服恐惧、从被动到主动\n"
+                "成就(achievement)：创造、完成、掌控感——我能行的体验\n"
+                "心流(flow)：全情投入、忘记时间、能力与挑战匹配"
+            )
+        return "\n\n".join(f"## {c.title}\n{c.content}" for c in chunks)
+
+    # ---------- 五种时间分类专用（紧凑定义 + few-shot 示例） ----------
+    def get_five_time_types_classify_context(self) -> str:
+        """
+        返回给「时间类型分类器」用的紧凑上下文：每类一句核心定义 + 判定线索，
+        再附上 RAG KB 里的真实举例做 few-shot。
+        比完整 definition 短很多（省 token），但判定信号更明确、每条都能落到五类之一。
+        """
+        # 1) 紧凑定义（含判定线索关键词，帮助 LLM 稳定命中，非正则匹配）
+        definitions = (
+            "health（健康）：运动、户外、身体发育、大动作、精细动作、睡眠、饮食、生病恢复——身体的活力与成长。\n"
+            "play（好玩）：纯粹为高兴而玩、好奇、探索、发现、模仿、感官体验——不为目的，玩本身就是快乐。\n"
+            "survival（生存）：面对困难/恐惧/陌生/规则/挫折/分离，从被动到主动、克服、坚持、自我保护——学会应对挑战。\n"
+            "achievement（成就）：创造、完成、掌控、学会新技能、里程碑、‘我能行/我做到了’的成就感。\n"
+            "flow（心流）：长时间全情投入、忘记时间、深度专注、深度共情、情感顿悟——能力与挑战匹配的最高质量快乐。\n"
+        )
+        # 2) few-shot 示例（优先取 KB 的「举例说明」小节；取不到则用内置示例）
+        examples = ""
+        for c in self.chunks:
+            if "五种时间" in c.section and "举例" in (c.subsection or ""):
+                # 只取示例正文的前若干行，避免过长
+                lines = [ln for ln in c.content.splitlines() if "|" in ln and "记录" not in ln and "---" not in ln]
+                picked = lines[:8]
+                if picked:
+                    examples = "\n".join(picked)
+                break
+        if not examples:
+            examples = (
+                "| 扒着栏杆自主站立，兴奋手舞足蹈 | health | 身体发育突破 |\n"
+                "| 按按摩椅开关觉得好玩反复按 | play | 纯粹好奇和玩 |\n"
+                "| 发烧黏奶奶，第二天又要站起来 | survival | 面对疾病从脆弱到恢复 |\n"
+                "| 反复掰玩具胡萝卜三四次终于掰开 | achievement | 创造完成、我能行 |\n"
+                "| 蹲着看蚂蚁搬家40分钟完全沉浸 | flow | 全情投入忘记时间 |\n"
+            )
+        return f"# 五种时间定义\n{definitions}\n# 判定示例（记录 → 类型 → 理由）\n{examples}"
+
     # ---------- 格式化 ----------
     @staticmethod
     def format_for_prompt(chunks: List[KnowledgeChunk]) -> str:
