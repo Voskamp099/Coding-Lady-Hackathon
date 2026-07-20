@@ -40,3 +40,4 @@ frontend/dist/
 
 # Logs
 *.log
+.dumate/
