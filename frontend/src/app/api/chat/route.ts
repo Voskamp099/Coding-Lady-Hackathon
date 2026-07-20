@@ -35,11 +35,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No user message' }, { status: 400 });
     }
 
+    // 复合键 parentName::childName → 孩子名用于显示，完整键用于后端隔离
+    const displayChildName = childName && childName.includes('::')
+      ? childName.split('::', 1)[1]
+      : childName;
+
     // Build the enriched message for the Python backend.
     // 用隐式叙述而非"对话上下文"标签（避免 LLM 复读前缀）
     const perspectiveNote = userRole === 'parent'
-      ? `家长视角：用第三人称谈论孩子「${childName}」`
-      : `孩子视角：用第二人称跟「${childName}」本人对话`;
+      ? `家长视角：用第三人称谈论孩子「${displayChildName}」`
+      : `孩子视角：用第二人称跟「${displayChildName}」本人对话`;
     const enrichedMessage = [
       `（${perspectiveNote}）`,
       memoryContext ? `\n以下是用户过往的真实成长记录，作为你回答的事实基础（不要复述格式）：\n${memoryContext.slice(0, 1500)}` : '',

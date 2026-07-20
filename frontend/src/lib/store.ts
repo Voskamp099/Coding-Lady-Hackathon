@@ -281,6 +281,18 @@ export function saveUser(user: UserProfile): void {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
+/**
+ * 退出/切换账户：清除 localStorage 中的用户和记忆缓存，返回到 onboarding。
+ * 不清后端数据库——数据按名字安全保留，下次用同样的名字进入还能看到。
+ */
+export function logoutUser(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(MEMORIES_KEY);
+  localStorage.removeItem(BACKEND_MEMORIES_KEY);
+  window.location.href = '/onboarding';
+}
+
 export function getMemories(): Memory[] {
   if (typeof window === 'undefined') return [];
   try {
@@ -593,12 +605,31 @@ export function generateValueSeedsFromMemories(memories: Memory[]): string[] {
 /* ========== 后端同步 (Backend Sync) ========== */
 
 /**
- * 当前用户的孩子名字（用于 API 隔离）。未登录返回 undefined。
+ * 当前用户的复合身份键（parentName::childName），用于 API 数据隔离。
+ * 不同家长+孩子组合天然隔离。未登录返回 undefined。
  */
-function _currentChildName(): string | undefined {
+function _currentIdentity(): string | undefined {
   if (typeof window === 'undefined') return undefined;
   const u = getUser();
-  return u?.childName || undefined;
+  if (!u?.childName) return undefined;
+  // 复合键：parentName::childName，确保不同家长+孩子组合隔离
+  const parent = u.parentName || '';
+  return parent ? `${parent}::${u.childName}` : u.childName;
+}
+
+/**
+ * 当前用户的复合身份键（parentName::childName），用于 API 数据隔离。
+ * 不同家长+孩子组合天然隔离。未登录返回 undefined。
+ */
+export function getCurrentIdentity(): string | undefined {
+  return _currentIdentity();
+}
+
+/**
+ * 兼容旧名：返回复合身份键。
+ */
+function _currentChildName(): string | undefined {
+  return _currentIdentity();
 }
 
 /**
