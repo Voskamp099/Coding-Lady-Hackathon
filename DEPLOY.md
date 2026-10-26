@@ -14,7 +14,7 @@ Vercel (前端 Next.js)  ──API代理──▶  Render (后端 Python FastAPI
 ## 第一步：推到 GitHub
 
 ```bash
-cd /Users/raelynn/Downloads/coding-lady
+cd coding-lady
 git init
 git add .
 git commit -m "TimeMirror hackathon MVP"
@@ -85,7 +85,7 @@ export const DEMO_DATASET: 'life' | 'child' = 'life';   // ← 改成 'child' �
 
 ```bash
 # 后端
-cd /Users/raelynn/Downloads/coding-lady
+cd coding-lady
 ./venv/bin/python run.py          # :8000
 
 # 前端
