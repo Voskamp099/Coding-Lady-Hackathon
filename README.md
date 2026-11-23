@@ -181,8 +181,8 @@ cd frontend && pnpm dev
 
 ## 📚 相关文档
 
-- [`DEPLOY.md`](./DEPLOY.md) — 详细部署指南
-- [`RAG-knowledge-base.md`](./RAG-knowledge-base.md) — 拾光镜四大理论基础手册
+- [`DEPLOY.md`](./docs/DEPLOY.md) — 详细部署指南
+- [`RAG-knowledge-base.md`](./docs/RAG-knowledge-base.md) — 拾光镜四大理论基础手册
 - [`frontend/AGENTS.md`](./frontend/AGENTS.md) — 前端页面结构与开发规范
 - [`frontend/DESIGN.md`](./frontend/DESIGN.md) — 设计文档
 

@@ -1,7 +1,7 @@
 """
 心理学知识库 RAG（Retrieval-Augmented Generation）。
 
-知识来源：RAG-knowledge-base.md —— 拾光镜四大理论基础手册
+知识来源：docs/RAG-knowledge-base.md —— 拾光镜四大理论基础手册
   1. 王潇·儿童五种时间（数据入口分类）
   2. 托马斯&切斯·儿童气质九维度（人格底色）
   3. 加德纳·多元智能（天赋潜能）
@@ -26,7 +26,7 @@ from backend.embeddings import Embedder, TfidfEmbedder, get_embedder
 
 
 KB_FILE = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "..", "RAG-knowledge-base.md"
+    os.path.dirname(os.path.abspath(__file__)), "..", "docs", "RAG-knowledge-base.md"
 )
 
 
